@@ -1,0 +1,27 @@
+{
+  "name": "enclave-e2ee-kv",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "protocol",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "build": "npm -w @e2ee-kv/protocol run build && npm -w e2ee-kv-client run build && npm run -s assets:copy && npm -w e2ee-kv-server run build",
+    "assets:copy": "rm -rf server/public && mkdir -p server/public && cp -r client/dist/. server/public/",
+    "test": "npm -w @e2ee-kv/protocol test --if-present && npm -w e2ee-kv-server test --if-present && npm -w e2ee-kv-client test --if-present",
+    "typecheck": "tsc -b protocol server client",
+    "dev:server": "npm -w e2ee-kv-server run dev",
+    "dev:client": "npm -w e2ee-kv-client run dev",
+    "clean": "rm -rf protocol/dist server/dist server/public client/dist"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

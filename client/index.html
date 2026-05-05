@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Enclave E2EE KV</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem auto; max-width: 720px; padding: 0 1rem; }
+      h1 { font-size: 1.4rem; }
+      pre { background: #f5f5f5; padding: 0.75rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; }
+      .banner { padding: 0.75rem; border-radius: 6px; margin: 1rem 0; }
+      .banner.ok { background: #e8f5e9; border: 1px solid #66bb6a; }
+      .banner.err { background: #ffebee; border: 1px solid #e57373; }
+      .banner.warn { background: #fff3e0; border: 1px solid #ffb74d; }
+      input, button { font-size: 1rem; padding: 0.4rem 0.6rem; margin: 0.2rem; }
+      button { cursor: pointer; }
+      .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+      .kv-list { list-style: none; padding: 0; }
+      .kv-list li { padding: 0.5rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; gap: 0.5rem; }
+      code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.9em; }
+    </style>
+  </head>
+  <body>
+    <h1>Enclave E2EE KV — reference client</h1>
+    <div id="attestation-banner" class="banner warn">Verifying enclave attestation…</div>
+    <div id="auth-section"></div>
+    <div id="kv-section" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

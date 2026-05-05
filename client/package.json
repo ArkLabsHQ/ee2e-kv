@@ -1,0 +1,24 @@
+{
+  "name": "e2ee-kv-client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@e2ee-kv/protocol": "*",
+    "@noble/curves": "^1.7.0",
+    "@peculiar/x509": "^1.12.3",
+    "@simplewebauthn/browser": "^11.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  }
+}

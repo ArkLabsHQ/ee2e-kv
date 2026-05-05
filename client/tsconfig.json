@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "moduleResolution": "Bundler",
+    "module": "ES2022",
+    "types": [],
+    "composite": true
+  },
+  "references": [{ "path": "../protocol" }],
+  "include": ["src/**/*"]
+}
