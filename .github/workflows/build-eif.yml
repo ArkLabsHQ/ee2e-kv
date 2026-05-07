@@ -1,10 +1,6 @@
 name: Build EIF
 
 on:
-  push:
-    branches: [master, main]
-    paths:
-      - 'enclave/**'
   workflow_dispatch:
 
 permissions:

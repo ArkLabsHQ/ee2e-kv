@@ -8,7 +8,7 @@ import {
 import type {
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
-} from "@simplewebauthn/types";
+} from "@simplewebauthn/server";
 import type { AuthProvider, UserId, UserRecord } from "./provider.js";
 import type { StorageClient } from "../storage/client.js";
 import { credIndexKey, userKey } from "../storage/keys.js";
@@ -165,9 +165,14 @@ export class WebAuthnProvider implements AuthProvider {
       userVerification: "required",
       allowCredentials: allowCredentials as never,
       extensions: {
-        // PRF eval with our app salt — output stays on the client.
+        // Just signal that PRF should be enabled on the assertion. The PRF
+        // salt is a fixed app constant (SHA256("enclave-kv-v1")) known to
+        // both sides, so the client injects `eval.first` itself before
+        // calling navigator.credentials.get(). Sending it on the wire would
+        // double-encode (Uint8Array doesn't JSON-serialise as a buffer; v13's
+        // server SDK leaves extensions untouched at JSON.stringify time).
         // @ts-expect-error prf extension not in types
-        prf: { eval: { first: new Uint8Array(PRF_SALT) } },
+        prf: {},
       },
       challenge: new Uint8Array(challengeBuf),
     });

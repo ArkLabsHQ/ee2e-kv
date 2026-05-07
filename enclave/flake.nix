@@ -96,6 +96,12 @@
             cp -r server/public      $out/lib/node_modules/${appCfg.binary_name}/public
             cp    server/index.js    $out/lib/node_modules/${appCfg.binary_name}/index.js
             cp    server/package.json $out/lib/node_modules/${appCfg.binary_name}/package.json
+            # Server bundle externalises its npm deps (so packages with dynamic
+            # require() like node-fetch keep working). Ship the workspace-root
+            # node_modules so Node can resolve them at runtime. -L follows the
+            # workspace symlinks (e.g. node_modules/@e2ee-kv/protocol) and
+            # materialises them as real directories inside the EIF.
+            cp -rL node_modules      $out/lib/node_modules/${appCfg.binary_name}/node_modules
             runHook postInstall
           '';
         } // (if (appCfg.nix_subdir or "") != "" then {

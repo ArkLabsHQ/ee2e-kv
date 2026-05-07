@@ -3,7 +3,8 @@ import { verifySchnorrSignature } from "./schnorr.js";
 
 export interface RpcClientOpts {
   baseUrl?: string;
-  attestationPubkeyHex: string;
+  /** Hex-encoded pinned attestation pubkey, or `null` to skip response-signature verification (dev only). */
+  attestationPubkeyHex: string | null;
   authToken?: () => string | null;
 }
 
@@ -36,7 +37,9 @@ export class RpcClient {
       body: JSON.stringify(reqBody),
     });
     const bodyBytes = new Uint8Array(await res.arrayBuffer());
-    await this.verifyResponseSignature(bodyBytes, res.headers);
+    if (this.opts.attestationPubkeyHex !== null) {
+      await this.verifyResponseSignature(bodyBytes, res.headers);
+    }
     const parsed = JSON.parse(new TextDecoder().decode(bodyBytes)) as unknown;
     const rpc = RpcResponse.parse(parsed);
     if (rpc.error) throw new RpcCallError(rpc.error);
@@ -44,12 +47,14 @@ export class RpcClient {
   }
 
   private async verifyResponseSignature(body: Uint8Array, headers: Headers): Promise<void> {
+    const pinned = this.opts.attestationPubkeyHex;
+    if (pinned === null) return;
     const sigHex = headers.get("x-attestation-signature");
     const pubkeyHex = headers.get("x-attestation-pubkey");
     if (!sigHex || !pubkeyHex) throw new Error("response missing attestation signature headers");
-    if (pubkeyHex.toLowerCase() !== this.opts.attestationPubkeyHex.toLowerCase()) {
+    if (pubkeyHex.toLowerCase() !== pinned.toLowerCase()) {
       throw new Error(
-        `response signed with unpinned key (got ${pubkeyHex}, pinned ${this.opts.attestationPubkeyHex})`,
+        `response signed with unpinned key (got ${pubkeyHex}, pinned ${pinned})`,
       );
     }
     const ok = verifySchnorrSignature(body, sigHex, pubkeyHex);

@@ -13,7 +13,7 @@
   "dependencies": {
     "@e2ee-kv/protocol": "*",
     "@hono/node-server": "^1.13.7",
-    "@simplewebauthn/server": "^11.0.0",
+    "@simplewebauthn/server": "^13.3.0",
     "hono": "^4.6.10",
     "zod": "^3.23.8"
   },

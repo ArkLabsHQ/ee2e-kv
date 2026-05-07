@@ -1,5 +1,4 @@
 import { fetchAndVerify } from "./enclave/info.js";
-import { fetchApiInfo } from "./enclave/info.js";
 import { RpcClient } from "./enclave/rpcClient.js";
 import { register, assert } from "./auth/webauthnClient.js";
 import {
@@ -20,6 +19,22 @@ const authSection = document.getElementById("auth-section") as HTMLDivElement;
 const kvSection = document.getElementById("kv-section") as HTMLDivElement;
 
 async function bootstrap(): Promise<void> {
+  // In dev (`vite dev`) we don't have a real Nitro CA chain or a supervisor
+  // signing responses, so we skip both attestation and per-response signature
+  // verification and show a loud banner instead. `import.meta.env.DEV` is true
+  // only for `vite dev` — `vite build` (what ships in the EIF) keeps the full
+  // verification path.
+  if (import.meta.env.DEV) {
+    banner.className = "banner err";
+    banner.innerHTML = `
+      <strong>DEV MODE — attestation NOT verified.</strong>
+      The reference SPA is talking to a stub runtime. Do not enter real secrets.
+    `;
+    const rpc = new RpcClient({ attestationPubkeyHex: null, authToken: getAuthToken });
+    renderAuth(rpc);
+    return;
+  }
+
   let pubkeyHex: string;
   let pcr0Hex: string;
   try {
@@ -32,12 +47,10 @@ async function bootstrap(): Promise<void> {
     return;
   }
 
-  const apiInfo = await fetchApiInfo();
   banner.className = "banner ok";
   banner.innerHTML = `
     <strong>Enclave verified.</strong>
-    PCR0 (running): <code>${escapeHtml(pcr0Hex)}</code><br/>
-    PCR0 (server-reported): <code>${escapeHtml(apiInfo.pcr0)}</code><br/>
+    PCR0: <code>${escapeHtml(pcr0Hex)}</code><br/>
     Attestation pubkey: <code>${escapeHtml(pubkeyHex)}</code><br/>
     Compare PCR0 above against the published reference for the release you trust.
   `;

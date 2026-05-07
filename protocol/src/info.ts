@@ -7,7 +7,6 @@ export const RpInfo = z.object({
 });
 
 export const ApiInfo = z.object({
-  pcr0: z.string(),
   version: z.string(),
   providers: z.array(z.string()),
   rp: RpInfo,

@@ -10,6 +10,10 @@ export default defineConfig({
   sourcemap: true,
   minify: false,
   bundle: true,
-  noExternal: [/.*/],
+  // Bundle our own protocol workspace + tsup's own helpers, but leave
+  // node_modules deps external. Inlining everything breaks packages with
+  // dynamic require() (e.g. @simplewebauthn/server -> node-fetch -> punycode)
+  // because the ESM bundle has no real CommonJS loader.
+  noExternal: ["@e2ee-kv/protocol"],
   platform: "node",
 });

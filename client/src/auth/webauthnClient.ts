@@ -1,7 +1,7 @@
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import type { RpcClient } from "../enclave/rpcClient.js";
 import { PRF_SALT } from "./prfDerive.js";
-import { base64ToBytes, bytesToBase64 } from "../crypto/encoding.js";
+import { base64ToBytes } from "../crypto/encoding.js";
 
 export interface RegisterResult {
   userId: string;
@@ -67,10 +67,17 @@ function injectPrfOnRegister(options: unknown): unknown {
 }
 
 function injectPrfOnAssert(options: unknown): unknown {
+  // @simplewebauthn/browser passes options.extensions through to
+  // navigator.credentials.get() unchanged (it only base64url-decodes
+  // `challenge` and `allowCredentials.*.id`). The native WebAuthn API
+  // requires `prf.eval.first` as a BufferSource, so we set the Uint8Array
+  // directly — passing a base64url string raises "is not of type
+  // (ArrayBuffer or ArrayBufferView)". The salt is a fixed app constant on
+  // both ends, so we don't rely on whatever the server echoed back.
   const o = options as { extensions?: Record<string, unknown> };
   o.extensions = {
     ...(o.extensions ?? {}),
-    prf: { eval: { first: bytesToBase64Url(PRF_SALT) } },
+    prf: { eval: { first: PRF_SALT } },
   };
   return o;
 }
@@ -86,10 +93,6 @@ function extractPrfFirst(credential: unknown): Uint8Array | null {
     return base64UrlToBytes(first);
   }
   return new Uint8Array(first);
-}
-
-function bytesToBase64Url(bytes: Uint8Array): string {
-  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function base64UrlToBytes(s: string): Uint8Array {
