@@ -1,0 +1,63 @@
+# Enclave configuration
+# Edit this file then run: enclave init
+
+name: e2ee-kv                    # App name (used in stack name, EIF name)
+version: 0.0.1                   # Build version (semver, baked into binary via ldflags)
+region: us-east-1                # AWS region
+account: ""                      # AWS account ID (required)
+prefix: dev                      # Deployment prefix (stack = {prefix}Nitro{Name})
+instance_type: m6i.xlarge        # EC2 instance type
+migration_cooldown: "1m"         # Cooldown before migration proceeds
+is_kms_key_locked: false         # false (default): grant AWS root kms:PutKeyPolicy on the locked key — recovery from lockout works by adding a new PCR0 condition.
+                                 # true:             strict mode — the locked policy is frozen; even root cannot rewrite it. Only the attested enclave can decrypt.
+
+# Runtime coordinates for the enclave supervisor binary.
+# The supervisor handles attestation, secrets, PCR extension, and signing
+# middleware automatically. Your app is a plain HTTP server with zero runtime imports.
+runtime:
+  rev: "v0.0.75"
+  hash: "sha256-QKz8cYewOBJFf854DXkkIajPgQskBc8xmHsrie2R1Oc="
+  vendor_hash: "sha256-2ZX9x2voIwVkUsmrZvhJssAQqnCh8/HLwopL5HpiaOg="
+
+app:
+  language: "nodejs"             # App language: go, nodejs, dotnet, rust
+  source: nix                    # "nix" = fetch from GitHub via Nix
+
+  # GitHub coordinates for the app to run inside the enclave.
+  # Your app is a plain HTTP server that listens on ENCLAVE_APP_PORT (default 7074).
+  # Secrets are passed as environment variables. No runtime imports needed.
+  nix_owner: ""                  # GitHub owner (required)
+  nix_repo: ""                   # GitHub repo name (required)
+  nix_rev: ""                    # Git commit SHA (required)
+  nix_hash: ""                   # Nix source hash: nix-prefetch-url --unpack (required)
+  nix_vendor_hash: ""            # Go vendor hash (required)
+  nix_sub_packages:              # Unused for nodejs apps (Go-only); leave as-is
+    - "."
+  nix_subdir: ""                 # Empty: build runs at workspace root so npm workspaces resolve
+  binary_name: "e2ee-kv-server"  # Output binary name — must match server/package.json "name"
+  release_tag: "eif-latest"      # GitHub Release tag used by 'enclave tofu --remote'
+
+  # Environment variables baked into the EIF as build-time defaults
+  # (each value contributes to PCR0). Tofu can override any key here
+  # at deploy time via -var 'env_values={"MY_KEY":"new-value"}' without
+  # rebuilding the EIF — the runtime overlays the SSM value on top of
+  # the baked default at boot.
+  # Template vars: {{region}}, {{prefix}}, {{version}}
+  env:
+    # WebAuthn relying-party identity. RP_ID and RP_ORIGIN must match the
+    # public hostname/scheme the user's browser sees. Override per-deployment
+    # via `enclave tofu` -var 'env_values=...'.
+    RP_ID: "localhost"
+    RP_NAME: "Enclave KV"
+    RP_ORIGIN: "http://localhost:7074"
+    APP_VERSION: "0.0.1"
+
+# Secrets managed by KMS inside the enclave.
+# Each secret is generated as 32 random bytes, encrypted with KMS,
+# stored in SSM, and decrypted at boot via attestation.
+# The decrypted value (hex-encoded) is set as the specified env var.
+secrets:
+  # HMAC key for the per-session JWT (auth_token). Generated at first boot,
+  # decrypted from KMS at every subsequent boot, exposed as $AUTH_TOKEN_KEY.
+  - name: auth_token_key
+    env_var: AUTH_TOKEN_KEY
