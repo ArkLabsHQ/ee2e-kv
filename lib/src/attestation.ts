@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import { cborDecode, cborEncodeArray, cborEncodeBytes, cborEncodeText } from "./cbor.js";
 import { AWS_NITRO_ROOT_PEM } from "./nitroRoot.js";
-import { base64ToBytes, bytesToHex, constTimeEq } from "../crypto/encoding.js";
+import { base64ToBytes, bytesToHex, constTimeEq } from "./encoding.js";
 
 export interface AttestationDoc {
   module_id: string;

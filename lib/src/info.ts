@@ -1,6 +1,5 @@
-import type { ApiInfo } from "@e2ee-kv/protocol";
 import { decodeAttestationDocB64, verifyAttestation, type VerifiedAttestation } from "./attestation.js";
-import { bytesToHex } from "../crypto/encoding.js";
+import { bytesToHex } from "./encoding.js";
 
 export interface EnclaveInfo {
   attestation_pubkey?: string;
@@ -13,12 +12,6 @@ export async function fetchEnclaveInfo(baseUrl = ""): Promise<EnclaveInfo> {
   const res = await fetch(`${baseUrl}/v1/enclave-info`);
   if (!res.ok) throw new Error(`enclave-info: HTTP ${res.status}`);
   return (await res.json()) as EnclaveInfo;
-}
-
-export async function fetchApiInfo(baseUrl = ""): Promise<ApiInfo> {
-  const res = await fetch(`${baseUrl}/api/info`);
-  if (!res.ok) throw new Error(`api/info: HTTP ${res.status}`);
-  return (await res.json()) as ApiInfo;
 }
 
 /** Fetch and verify the attestation document end-to-end. */

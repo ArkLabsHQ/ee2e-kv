@@ -9,3 +9,7 @@ server/public/
 *.log
 .env
 .env.local
+
+# Dev-only artefacts produced by the Makefile (HMAC keys, runtime tokens, log
+# pipe directory). Never commit these — they are regenerated on demand.
+.dev-*

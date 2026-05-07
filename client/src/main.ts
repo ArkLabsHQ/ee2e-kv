@@ -1,5 +1,4 @@
-import { fetchAndVerify } from "./enclave/info.js";
-import { RpcClient } from "./enclave/rpcClient.js";
+import { fetchAndVerify, RpcClient } from "@enclave-sdk/browser";
 import { register, assert } from "./auth/webauthnClient.js";
 import {
   clearSession,

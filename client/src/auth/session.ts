@@ -1,7 +1,7 @@
 import { importAesKey, aesGcmEncrypt, aesGcmDecrypt } from "../crypto/aesgcm.js";
 import { importHmacKey, hmacSha256 } from "../crypto/hmac.js";
 import { base32Encode } from "../crypto/base32.js";
-import { base64ToBytes, bytesToBase64 } from "../crypto/encoding.js";
+import { base64ToBytes, bytesToBase64 } from "@enclave-sdk/browser";
 import { derive } from "./prfDerive.js";
 
 export interface AuthSession {

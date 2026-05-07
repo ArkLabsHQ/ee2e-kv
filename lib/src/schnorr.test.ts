@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha256";
 import { verifySchnorrSignature } from "./schnorr.js";
-import { bytesToHex } from "../crypto/encoding.js";
+import { bytesToHex } from "./encoding.js";
 
 describe("verifySchnorrSignature", () => {
   it("verifies a freshly-signed message", () => {

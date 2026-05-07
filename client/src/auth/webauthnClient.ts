@@ -1,7 +1,7 @@
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
-import type { RpcClient } from "../enclave/rpcClient.js";
+import type { RpcClient } from "@enclave-sdk/browser";
 import { PRF_SALT } from "./prfDerive.js";
-import { base64ToBytes } from "../crypto/encoding.js";
+import { base64ToBytes } from "@enclave-sdk/browser";
 
 export interface RegisterResult {
   userId: string;

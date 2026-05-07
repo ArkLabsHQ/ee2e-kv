@@ -1,8 +1,35 @@
-import { RpcResponse, type RpcError } from "@e2ee-kv/protocol";
+import { z } from "zod";
 import { verifySchnorrSignature } from "./schnorr.js";
+
+/**
+ * Minimal JSON-RPC 2.0 envelope. Apps with their own typed protocol package
+ * are free to redefine this — RpcClient only validates the envelope shape and
+ * passes `result` back as `unknown`, so the caller can narrow it.
+ */
+const RpcId = z.union([z.string(), z.number(), z.null()]);
+
+export const JsonRpcError = z.object({
+  code: z.number().int(),
+  message: z.string(),
+  data: z.unknown().optional(),
+});
+export type JsonRpcError = z.infer<typeof JsonRpcError>;
+
+export const JsonRpcResponse = z.object({
+  jsonrpc: z.literal("2.0"),
+  id: RpcId,
+  result: z.unknown().optional(),
+  error: JsonRpcError.optional(),
+});
+export type JsonRpcResponse = z.infer<typeof JsonRpcResponse>;
 
 export interface RpcClientOpts {
   baseUrl?: string;
+  /**
+   * Path the JSON-RPC endpoint is mounted at. Defaults to `/api/rpc` so
+   * apps that follow the framework convention need no configuration.
+   */
+  rpcPath?: string;
   /** Hex-encoded pinned attestation pubkey, or `null` to skip response-signature verification (dev only). */
   attestationPubkeyHex: string | null;
   authToken?: () => string | null;
@@ -11,7 +38,7 @@ export interface RpcClientOpts {
 let nextId = 1;
 
 export class RpcCallError extends Error {
-  constructor(public readonly rpcError: RpcError) {
+  constructor(public readonly rpcError: JsonRpcError) {
     super(`${rpcError.code}: ${rpcError.message}`);
     this.name = "RpcCallError";
   }
@@ -31,7 +58,8 @@ export class RpcClient {
     const tok = this.opts.authToken?.();
     if (tok) headers["authorization"] = `Bearer ${tok}`;
     const baseUrl = this.opts.baseUrl ?? "";
-    const res = await fetch(`${baseUrl}/api/rpc`, {
+    const rpcPath = this.opts.rpcPath ?? "/api/rpc";
+    const res = await fetch(`${baseUrl}${rpcPath}`, {
       method: "POST",
       headers,
       body: JSON.stringify(reqBody),
@@ -41,7 +69,7 @@ export class RpcClient {
       await this.verifyResponseSignature(bodyBytes, res.headers);
     }
     const parsed = JSON.parse(new TextDecoder().decode(bodyBytes)) as unknown;
-    const rpc = RpcResponse.parse(parsed);
+    const rpc = JsonRpcResponse.parse(parsed);
     if (rpc.error) throw new RpcCallError(rpc.error);
     return rpc.result as T;
   }

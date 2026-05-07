@@ -1,6 +1,6 @@
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha256";
-import { hexToBytes } from "../crypto/encoding.js";
+import { hexToBytes } from "./encoding.js";
 
 /**
  * Verify a BIP-340 Schnorr signature over SHA256(body) with a hex-encoded

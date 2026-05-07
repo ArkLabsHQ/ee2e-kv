@@ -12,8 +12,7 @@
   },
   "dependencies": {
     "@e2ee-kv/protocol": "*",
-    "@noble/curves": "^1.7.0",
-    "@peculiar/x509": "^1.12.3",
+    "@enclave-sdk/browser": "*",
     "@simplewebauthn/browser": "^13.3.0"
   },
   "devDependencies": {
