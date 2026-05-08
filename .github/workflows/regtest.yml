@@ -86,9 +86,9 @@ jobs:
       - name: Clone introspector-enclave (host-side supervisor source)
         run: |
           git clone --depth 1 https://github.com/ArkLabsHQ/introspector-enclave \
-            "$HOME/introspector-enclave"
+            /home/runner/introspector-enclave
           # Vendor SDK deps (vendor/ is gitignored; Nix needs it for local source).
-          (cd "$HOME/introspector-enclave/runtime" && go mod vendor) || true
+          (cd /home/runner/introspector-enclave/runtime && go mod vendor) || true
 
       - name: Install enclave CLI
         run: |
@@ -103,7 +103,7 @@ jobs:
       - name: Run regtest
         env:
           EIF: ${{ inputs.eif_path }}
-          INTROSPECTOR_ENCLAVE: ${{ env.HOME }}/introspector-enclave
+          INTROSPECTOR_ENCLAVE: /home/runner/introspector-enclave
         run: make regtest
 
       - name: Upload boot log on failure
