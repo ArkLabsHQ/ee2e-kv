@@ -14,9 +14,8 @@
 # Prerequisites:
 #   - nix develop ./test/qemu (provides QEMU 9.2.4 + vhost-device-vsock 0.3.0)
 #   - docker compose (mock AWS services)
-#   - enclave CLI on PATH
-#   - ${INTROSPECTOR_ENCLAVE:-$HOME/introspector-enclave} checked out
-#     (host-side supervisor is built from there)
+#   - enclave CLI on PATH (also produces the host-side supervisor binary
+#     as part of `enclave build`, at .enclave/artifacts/supervisor)
 #   - npx playwright install chromium (run `make regtest-deps` once)
 #   - python3 (for the harness static server)
 #   - vsock + vsock_loopback kernel modules loaded
@@ -26,7 +25,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_PATH="$(realpath "$0")"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-INTROSPECTOR_ENCLAVE="${INTROSPECTOR_ENCLAVE:-$HOME/introspector-enclave}"
 
 # --- Tunables ---
 HARNESS_PORT="${HARNESS_PORT:-5174}"
@@ -92,15 +90,7 @@ need_cmd docker
 need_cmd enclave
 need_cmd npx
 need_cmd python3
-need_cmd go
 need_cmd jq
-
-if [ ! -d "$INTROSPECTOR_ENCLAVE" ]; then
-  echo "Error: introspector-enclave checkout not found at $INTROSPECTOR_ENCLAVE" >&2
-  echo "Set INTROSPECTOR_ENCLAVE to a clone of github.com/ArkLabsHQ/introspector-enclave" >&2
-  exit 1
-fi
-echo "  introspector-enclave: $INTROSPECTOR_ENCLAVE"
 
 # Auto-enter the test/qemu nix dev shell if QEMU+vhost-device-vsock missing.
 if ! command -v vhost-device-vsock >/dev/null 2>&1 || ! command -v qemu-system-x86_64 >/dev/null 2>&1; then
@@ -127,8 +117,6 @@ free_port 9090
 # Tear down any docker stack from a previous run before we try to bind the
 # mock-service ports below (ports 8080/4000/4566/1338).
 ( cd "$SCRIPT_DIR/qemu" && docker compose down -v --timeout 5 2>/dev/null ) || true
-# Also stop any introspector-enclave test stack hogging the same ports.
-( cd "$INTROSPECTOR_ENCLAVE/test" && docker compose down -v --timeout 5 2>/dev/null ) || true
 
 # Warn if pinned nix_rev != HEAD of the GitHub remote.
 HEAD_REV=$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo "")
@@ -163,12 +151,14 @@ echo "=== [3/10] Building harness fixture ==="
 ( cd "$REPO_ROOT" && npm -w @enclave-test/browser run build >/dev/null 2>&1 )
 echo "  test/browser/dist/ ready"
 
-# === Phase 4: build host-side supervisor ===
+# === Phase 4: locate host-side supervisor ===
+# `enclave build` produced both image.eif and the supervisor binary in
+# .enclave/artifacts/. No separate go build needed.
 echo ""
-echo "=== [4/10] Building host-side supervisor ==="
-ENCLAVE_SUPERVISOR=/tmp/enclave-supervisor
-( cd "$INTROSPECTOR_ENCLAVE" && go build -o "$ENCLAVE_SUPERVISOR" ./supervisor/cmd/supervisor )
-echo "  Supervisor built: $ENCLAVE_SUPERVISOR"
+echo "=== [4/10] Locating host-side supervisor ==="
+ENCLAVE_SUPERVISOR="$REPO_ROOT/.enclave/artifacts/supervisor"
+[ -x "$ENCLAVE_SUPERVISOR" ] || { echo "Error: supervisor not found at $ENCLAVE_SUPERVISOR (did 'enclave build' run?)" >&2; exit 1; }
+echo "  Supervisor: $ENCLAVE_SUPERVISOR"
 
 # === Phase 5: bring up mock AWS services ===
 echo ""

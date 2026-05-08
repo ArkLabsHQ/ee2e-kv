@@ -26,11 +26,9 @@ make regtest-fast
 |---|---|
 | `nix` | https://nixos.org/download (also handles QEMU + vhost-device-vsock) |
 | `docker` | for the mock AWS stack (KMS / KMS-proxy / LocalStack / mock-imds) |
-| `enclave` CLI | `go install github.com/ArkLabsHQ/introspector-enclave/cli/cmd/enclave@latest` |
+| `enclave` CLI | `go install github.com/ArkLabsHQ/introspector-enclave/cli/cmd/enclave@latest` (also produces the host-side supervisor binary at `.enclave/artifacts/supervisor` as part of `enclave build`) |
 | `tofu` | OpenTofu — `https://opentofu.org/docs/intro/install/` |
 | `python3` | for the harness static server |
-| `go` | for building the host-side supervisor from upstream |
-| **`introspector-enclave` checkout** | `git clone https://github.com/ArkLabsHQ/introspector-enclave $HOME/introspector-enclave` (override path with `INTROSPECTOR_ENCLAVE` env) |
 | `vsock` + `vsock_loopback` modules | `sudo modprobe vsock vsock_loopback` |
 
 The QEMU/`vhost-device-vsock` stack is auto-entered via `nix develop test/qemu/` if those tools are missing on your `PATH`.
@@ -83,7 +81,7 @@ test/
 [1/10] Pre-flight              — tools, /dev/vsock, free ports, docker compose down
 [2/10] Build EIF               — `enclave build` (cached after first run)
 [3/10] Build harness fixture   — `npm -w @enclave-test/browser run build`
-[4/10] Build host supervisor   — `go build` against $INTROSPECTOR_ENCLAVE
+[4/10] Locate host supervisor  — use the binary `enclave build` already wrote
 [5/10] Mock services up        — docker compose
 [6/10] Tofu apply              — scaffold + apply with env_values overlay
 [7/10] Launch supervisor       — relauncher pattern; supervisor watchdog boots QEMU via ENCLAVE_START_CMD
@@ -97,7 +95,7 @@ Cleanup happens via `trap … EXIT` regardless of which phase failed.
 ## Troubleshooting
 
 - `Error: /dev/vsock not present` → `sudo modprobe vsock vsock_loopback`
-- `Bind for 0.0.0.0:1338 failed: port is already allocated` → another docker compose stack is using the port. Phase 1 already runs `docker compose down -v` against both this dir and `$INTROSPECTOR_ENCLAVE/test`; if a third stack is hogging the port, find it with `docker ps | grep 1338`.
+- `Bind for 0.0.0.0:1338 failed: port is already allocated` → another docker compose stack is using the port. Phase 1 already runs `docker compose down -v` against `test/qemu/`; if a different stack is hogging the port, find it with `docker ps | grep 1338`.
 - `legacy flake.nix at repo root` → run from the repo root, NOT from `enclave/`. The CLI's `findRepoRoot` walks up from cwd looking for `enclave/enclave.yaml`.
 - Smoke step 4 (attestation) fails with `chain does not anchor to AWS Nitro root` → the EIF was built against a fork that doesn't ship the AWS Nitro test certs. The upstream `qemu-system-x86_64 -M nitro-enclave` machine type produces AWS-rooted attestations by default.
 - Browser step 1 hangs → check that `npx playwright install chromium` ran successfully. `~/.cache/ms-playwright/chromium-*` should exist.
@@ -105,9 +103,10 @@ Cleanup happens via `trap … EXIT` regardless of which phase failed.
 
 ## Resync from upstream
 
-When upstream changes a vendored file (in `test/qemu/`):
+When upstream changes a vendored file (in `test/qemu/`), clone introspector-enclave somewhere temporary and diff:
 
 ```sh
-diff -u $HOME/introspector-enclave/test/heartbeat.py test/qemu/heartbeat.py
+git clone --depth 1 https://github.com/ArkLabsHQ/introspector-enclave /tmp/introspector-enclave
+diff -u /tmp/introspector-enclave/test/heartbeat.py test/qemu/heartbeat.py
 # review, update if appropriate, bump UPSTREAM.md commit SHA
 ```

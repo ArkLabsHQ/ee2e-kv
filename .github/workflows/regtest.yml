@@ -83,13 +83,6 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Clone introspector-enclave (host-side supervisor source)
-        run: |
-          git clone --depth 1 https://github.com/ArkLabsHQ/introspector-enclave \
-            /home/runner/introspector-enclave
-          # Vendor SDK deps (vendor/ is gitignored; Nix needs it for local source).
-          (cd /home/runner/introspector-enclave/runtime && go mod vendor) || true
-
       - name: Install enclave CLI
         run: |
           go install github.com/ArkLabsHQ/introspector-enclave/cli/cmd/enclave@latest
@@ -103,7 +96,6 @@ jobs:
       - name: Run regtest
         env:
           EIF: ${{ inputs.eif_path }}
-          INTROSPECTOR_ENCLAVE: /home/runner/introspector-enclave
         run: make regtest
 
       - name: Upload boot log on failure
