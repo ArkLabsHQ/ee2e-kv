@@ -5,15 +5,8 @@ name: Regtest (QEMU)
 # runs the Node smoke client and Playwright headless-browser flow against
 # the live enclave, then tears everything down.
 #
-# REQUIRES a runner with:
-#   - /dev/vsock (kernel modules: vsock + vsock_loopback)
-#   - KVM (or accept slow TCG fallback)
-#   - Docker, Nix, Go, Python3, npm
-#   - Network access to GitHub (to fetch the app source) + npm registry
-#
-# GitHub's ubuntu-latest does NOT have /dev/vsock or KVM. Use a
-# self-hosted runner labelled `nitro-regtest`, or trigger manually
-# from a developer machine via `make regtest`.
+# Mirrors introspector-enclave's CI pattern: ubuntu-latest with KVM enabled
+# + vsock kernel modules loaded.
 on:
   push:
     branches: [main, master]
@@ -53,37 +46,65 @@ permissions:
 
 jobs:
   regtest:
-    runs-on: [self-hosted, nitro-regtest]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
-      - name: Confirm runner has /dev/vsock
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+
+      - name: Load vsock kernel modules
         run: |
-          test -e /dev/vsock || { echo "::error::/dev/vsock missing — load vsock + vsock_loopback modules"; exit 1; }
-          echo "vsock OK"
+          sudo modprobe vsock
+          sudo modprobe vsock_loopback
+          test -e /dev/vsock && echo vsock OK
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-25.11
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Install npm deps
         run: npm ci
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Clone introspector-enclave (host-side supervisor source)
+        run: |
+          git clone --depth 1 https://github.com/ArkLabsHQ/introspector-enclave \
+            "$HOME/introspector-enclave"
+          # Vendor SDK deps (vendor/ is gitignored; Nix needs it for local source).
+          (cd "$HOME/introspector-enclave/runtime" && go mod vendor) || true
+
+      - name: Install enclave CLI
+        run: |
+          go install github.com/ArkLabsHQ/introspector-enclave/cli/cmd/enclave@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install OpenTofu
+        run: |
+          curl -fsSL https://get.opentofu.org/install-opentofu.sh | sudo bash -s -- --install-method standalone
+          tofu --version
+
       - name: Run regtest
         env:
           EIF: ${{ inputs.eif_path }}
-          INTROSPECTOR_ENCLAVE: ${{ github.workspace }}/.deps/introspector-enclave
-        run: |
-          # Clone the framework repo for the host-side supervisor build.
-          if [ ! -d "$INTROSPECTOR_ENCLAVE" ]; then
-            git clone --depth 1 https://github.com/ArkLabsHQ/introspector-enclave "$INTROSPECTOR_ENCLAVE"
-          fi
-          make regtest
+          INTROSPECTOR_ENCLAVE: ${{ env.HOME }}/introspector-enclave
+        run: make regtest
 
       - name: Upload boot log on failure
         if: failure()
@@ -91,4 +112,14 @@ jobs:
         with:
           name: boot-qemu-log
           path: /tmp/boot-qemu.log
+          if-no-files-found: ignore
+
+      - name: Upload tofu logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tofu-logs
+          path: |
+            /tmp/tofu-init.log
+            /tmp/tofu-apply.log
           if-no-files-found: ignore
