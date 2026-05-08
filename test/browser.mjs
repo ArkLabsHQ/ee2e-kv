@@ -109,17 +109,10 @@ async function main() {
     });
   }
 
-  await step("cross-origin Access-Control-Allow-Origin echoes harness origin", async () => {
-    // Re-issue an /api/info from the page; check the response's CORS header.
-    const cors = await page.evaluate(async (baseUrl) => {
-      const r = await fetch(`${baseUrl}/api/info`);
-      return r.headers.get("access-control-allow-origin");
-    }, opts.baseUrl);
-    if (!cors) throw new Error("missing Access-Control-Allow-Origin");
-    if (cors !== opts.harnessUrl && cors !== "*") {
-      throw new Error(`unexpected ACAO: ${cors}`);
-    }
-  });
+  // CORS is verified by smoke.mjs from Node (which sends a reliable Origin
+  // header). Doing it inside Chromium with --disable-web-security is
+  // unreliable — Chromium drops the Origin header on what it now considers
+  // same-origin, so the server has nothing to echo.
 
   // Host-side opacity check — only runs if we have the supervisor's runtime token.
   if (opts.runtimeToken && flowResult) {

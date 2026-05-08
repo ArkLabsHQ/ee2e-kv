@@ -18,9 +18,10 @@ function parseArgs(argv) {
     const k = argv[i];
     if (k === "--base-url") out.baseUrl = argv[++i];
     else if (k === "--expected-pcr0") out.expectedPcr0 = argv[++i];
+    else if (k === "--cors-origin") out.corsOrigin = argv[++i];
   }
   if (!out.baseUrl) {
-    console.error("Usage: smoke.mjs --base-url <url> [--expected-pcr0 <hex>]");
+    console.error("Usage: smoke.mjs --base-url <url> [--expected-pcr0 <hex>] [--cors-origin <url>]");
     process.exit(2);
   }
   return out;
@@ -115,6 +116,33 @@ async function main() {
       if (e?.rpcError?.code !== -32601) throw new Error(`got ${e?.rpcError?.code} not -32601`);
     }
   });
+
+  if (opts.corsOrigin) {
+    await step(`/api/info echoes ACAO when Origin is ${opts.corsOrigin}`, async () => {
+      // Node fetch reliably sends the Origin header; the server's hono/cors
+      // middleware echoes it back when the origin is in CORS_ALLOWED_ORIGINS.
+      const r = await fetch(`${opts.baseUrl}/api/info`, { headers: { origin: opts.corsOrigin } });
+      const acao = r.headers.get("access-control-allow-origin");
+      if (!acao) throw new Error("server returned no Access-Control-Allow-Origin");
+      if (acao !== opts.corsOrigin && acao !== "*") {
+        throw new Error(`unexpected ACAO: ${acao}`);
+      }
+    });
+
+    await step(`/api/info OPTIONS preflight from ${opts.corsOrigin} succeeds`, async () => {
+      const r = await fetch(`${opts.baseUrl}/api/rpc`, {
+        method: "OPTIONS",
+        headers: {
+          origin: opts.corsOrigin,
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "content-type",
+        },
+      });
+      if (r.status !== 204 && r.status !== 200) throw new Error(`preflight returned ${r.status}`);
+      const acao = r.headers.get("access-control-allow-origin");
+      if (!acao) throw new Error("preflight returned no Access-Control-Allow-Origin");
+    });
+  }
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);

@@ -53,7 +53,7 @@ services:
       test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health || exit 1"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 30
 
   mock-imds:
     build:

@@ -298,6 +298,7 @@ echo "=== [9/10] Smoke (HTTP/JSON-RPC, no browser) ==="
 # still want phase 10 (browser) to run so the user sees the full picture.
 NODE_TLS_REJECT_UNAUTHORIZED=0 node "$SCRIPT_DIR/smoke.mjs" \
   --base-url "https://localhost:$HOST_TLS_PORT" \
+  --cors-origin "http://localhost:$HARNESS_PORT" \
   ${EXPECTED_PCR0:+--expected-pcr0 "$EXPECTED_PCR0"} \
   | tee /tmp/smoke.log || true
 SMOKE_RC=${PIPESTATUS[0]}
