@@ -1,0 +1,19 @@
+{
+  "name": "@enclave-test/browser",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "preview": "vite preview --port 5174",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@enclave-sdk/browser": "*",
+    "@simplewebauthn/browser": "^13.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}

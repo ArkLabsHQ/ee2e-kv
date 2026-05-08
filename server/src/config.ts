@@ -12,7 +12,7 @@ const Env = z.object({
   APP_VERSION: z.string().default("0.0.1"),
   SESSION_TTL_MS: z.string().regex(/^\d+$/).transform(Number).default(String(5 * 60_000)),
   AUTH_TOKEN_TTL_MS: z.string().regex(/^\d+$/).transform(Number).default(String(15 * 60_000)),
-  STATIC_DIR: z.string().default("public"),
+  CORS_ALLOWED_ORIGINS: z.string().default(""),
 });
 
 export interface Config {
@@ -24,7 +24,7 @@ export interface Config {
   version: string;
   sessionTtlMs: number;
   authTokenTtlMs: number;
-  staticDir: string;
+  corsAllowedOrigins: string[];
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -40,7 +40,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     version: parsed.APP_VERSION,
     sessionTtlMs: parsed.SESSION_TTL_MS,
     authTokenTtlMs: parsed.AUTH_TOKEN_TTL_MS,
-    staticDir: parsed.STATIC_DIR,
+    corsAllowedOrigins: parsed.CORS_ALLOWED_ORIGINS
+      .split(",")
+      .map((o) => o.trim())
+      .filter((o) => o.length > 0),
   };
 }
 

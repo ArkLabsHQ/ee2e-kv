@@ -86,22 +86,23 @@
           nativeBuildInputs = resolveInputs (appCfg.nix_native_build_inputs or []);
           buildInputs = resolveInputs (appCfg.nix_build_inputs or []);
 
-          # The default install copies the entire workspace tree into
-          # lib/node_modules/<each-package>/, which in our setup ships the
-          # client + protocol packages too. We only want the server outputs.
+          # The server bundle (tsup with noExternal: [/.*/]) is fully
+          # self-contained, so the EIF only needs the bundle + the launcher
+          # stub. The server is API-only — no static asset serving — so we
+          # do NOT copy server/public (the dir doesn't even exist anymore;
+          # the reference SPA in client/ is a separate, independently-
+          # deployable artifact that no longer ships in the EIF). We also
+          # don't ship node_modules: the bundle has no runtime imports to
+          # resolve, and the workspace-root node_modules contains symlinks
+          # to the client/lib/protocol workspaces — `cp -rL` would
+          # dereference them and drag MB of source/dist for code the server
+          # never executes.
           installPhase = ''
             runHook preInstall
             mkdir -p $out/lib/node_modules/${appCfg.binary_name}
-            cp -r server/dist        $out/lib/node_modules/${appCfg.binary_name}/dist
-            cp -r server/public      $out/lib/node_modules/${appCfg.binary_name}/public
-            cp    server/index.js    $out/lib/node_modules/${appCfg.binary_name}/index.js
+            cp -r server/dist         $out/lib/node_modules/${appCfg.binary_name}/dist
+            cp    server/index.js     $out/lib/node_modules/${appCfg.binary_name}/index.js
             cp    server/package.json $out/lib/node_modules/${appCfg.binary_name}/package.json
-            # Server bundle externalises its npm deps (so packages with dynamic
-            # require() like node-fetch keep working). Ship the workspace-root
-            # node_modules so Node can resolve them at runtime. -L follows the
-            # workspace symlinks (e.g. node_modules/@e2ee-kv/protocol) and
-            # materialises them as real directories inside the EIF.
-            cp -rL node_modules      $out/lib/node_modules/${appCfg.binary_name}/node_modules
             runHook postInstall
           '';
         } // (if (appCfg.nix_subdir or "") != "" then {

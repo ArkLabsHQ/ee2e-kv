@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist-tsc",
+    "rootDir": "./src",
+    "moduleResolution": "Bundler",
+    "module": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "noEmit": true,
+    "types": ["vite/client"]
+  },
+  "references": [{ "path": "../../lib" }],
+  "include": ["src/**/*"]
+}

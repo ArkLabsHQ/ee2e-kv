@@ -10,10 +10,12 @@ export default defineConfig({
   sourcemap: true,
   minify: false,
   bundle: true,
-  // Bundle our own protocol workspace + tsup's own helpers, but leave
-  // node_modules deps external. Inlining everything breaks packages with
-  // dynamic require() (e.g. @simplewebauthn/server -> node-fetch -> punycode)
-  // because the ESM bundle has no real CommonJS loader.
-  noExternal: ["@e2ee-kv/protocol"],
+  // Bundle every dep into a single self-contained ESM file so the EIF
+  // doesn't need to ship node_modules. v13's @simplewebauthn/server dropped
+  // its node-fetch transitive (the only CJS pkg with a dynamic require()
+  // that broke ESM bundling), so [/.*/] is safe again. If a future dep
+  // pulls dynamic require() back in, narrow this regex rather than
+  // re-introducing the workspace-wide node_modules ship.
+  noExternal: [/.*/],
   platform: "node",
 });

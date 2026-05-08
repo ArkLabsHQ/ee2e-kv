@@ -26,11 +26,11 @@ app:
   # GitHub coordinates for the app to run inside the enclave.
   # Your app is a plain HTTP server that listens on ENCLAVE_APP_PORT (default 7074).
   # Secrets are passed as environment variables. No runtime imports needed.
-  nix_owner: ""                  # GitHub owner (required)
-  nix_repo: ""                   # GitHub repo name (required)
-  nix_rev: ""                    # Git commit SHA (required)
-  nix_hash: ""                   # Nix source hash: nix-prefetch-url --unpack (required)
-  nix_vendor_hash: ""            # Go vendor hash (required)
+  nix_owner: "ArkLabsHQ"                  # GitHub owner (required)
+  nix_repo: "ee2e-kv"                   # GitHub repo name (required)
+  nix_rev: "6a2dcd77b0c7a23ecce7852db4c2860756362498"                    # Git commit SHA (required)
+  nix_hash: "sha256-L8dYNXaW3/UcUITb7umtHYyF32eSpCtwpggb2KHCtbo="                   # Nix source hash: nix-prefetch-url --unpack (required)
+  nix_vendor_hash: "sha256-1KoLo42xJ1IjDkdT12UxwE44iVp1ITvYJCn+OVIZvL0="            # Go vendor hash (required)
   nix_sub_packages:              # Unused for nodejs apps (Go-only); leave as-is
     - "."
   nix_subdir: ""                 # Empty: build runs at workspace root so npm workspaces resolve
@@ -51,6 +51,21 @@ app:
     RP_NAME: "Enclave KV"
     RP_ORIGIN: "http://localhost:7074"
     APP_VERSION: "0.0.1"
+    # Comma-separated list of consumer-webapp origins allowed to call /api/*
+    # cross-origin. Empty default = no cross-origin requests permitted.
+    # Override per-deployment via `enclave tofu` -var
+    # 'env_values={"CORS_ALLOWED_ORIGINS":"https://app.example.com,https://staging.example.com"}'.
+    CORS_ALLOWED_ORIGINS: ""
+    # AWS endpoints via gvproxy TAP. host.containers.internal resolves to the
+    # host from inside the enclave; in production gvproxy routes these to real
+    # AWS endpoints, in the regtest harness they hit local-kms-proxy / LocalStack.
+    # Baking them at build time means PCR0 attests this routing.
+    AWS_ENDPOINT_URL_KMS: "http://host.containers.internal:4000"
+    AWS_ENDPOINT_URL_SSM: "http://host.containers.internal:4566"
+    AWS_ENDPOINT_URL_STS: "http://host.containers.internal:4566"
+    AWS_ENDPOINT_URL_S3: "http://host.containers.internal:4566"
+    AWS_ACCESS_KEY_ID: "test"
+    AWS_SECRET_ACCESS_KEY: "test"
 
 # Secrets managed by KMS inside the enclave.
 # Each secret is generated as 32 random bytes, encrypted with KMS,

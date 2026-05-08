@@ -2,9 +2,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 .enclave/
+tofu/
 result
 result-*
-server/public/
 .DS_Store
 *.log
 .env

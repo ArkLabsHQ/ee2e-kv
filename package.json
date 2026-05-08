@@ -7,21 +7,22 @@
     "protocol",
     "lib",
     "server",
-    "client"
+    "client",
+    "test/browser"
   ],
   "scripts": {
-    "build": "npm -w @e2ee-kv/protocol run build && npm -w @enclave-sdk/browser run build && npm -w e2ee-kv-client run build && npm run -s assets:copy && npm -w e2ee-kv-server run build",
-    "assets:copy": "rm -rf server/public && mkdir -p server/public && cp -r client/dist/. server/public/",
+    "build": "npm -w @e2ee-kv/protocol run build && npm -w @enclave-sdk/browser run build && npm -w e2ee-kv-server run build && npm -w e2ee-kv-client run build",
     "test": "npm -w @e2ee-kv/protocol test --if-present && npm -w @enclave-sdk/browser test --if-present && npm -w e2ee-kv-server test --if-present && npm -w e2ee-kv-client test --if-present",
     "typecheck": "tsc -b protocol lib server client",
     "dev:server": "npm -w e2ee-kv-server run dev",
     "dev:client": "npm -w e2ee-kv-client run dev",
-    "clean": "rm -rf protocol/dist lib/dist server/dist server/public client/dist"
+    "clean": "rm -rf protocol/dist lib/dist server/dist client/dist"
   },
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
+    "playwright": "^1.49.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
   },

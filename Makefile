@@ -87,3 +87,12 @@ stop:  ## kill any stray dev processes from a previous `make dev`
 	-pkill -f 'enclave-e2ee-kv/server/dist/index.js' 2>/dev/null || true
 	-pkill -f 'node_modules/.bin/vite' 2>/dev/null || true
 	@echo "stopped (or nothing to stop)"
+
+regtest-deps: check-node  ## one-shot: download Playwright Chromium (~250MB)
+	npx playwright install chromium
+
+regtest: check-node  ## boot EIF in QEMU + smoke + headless browser flow (Ctrl+C tears down)
+	@./test/run.sh
+
+regtest-fast: check-node  ## same as regtest but reuses an existing EIF (skips build phase)
+	@EIF=enclave/.enclave/artifacts/image.eif ./test/run.sh

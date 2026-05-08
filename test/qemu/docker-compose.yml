@@ -1,0 +1,70 @@
+# Mock AWS services for local QEMU regtest. Lifted from
+# introspector-enclave/test/docker-compose.yml — see UPSTREAM.md.
+#
+# Differences from upstream:
+#   - Dockerfile build contexts narrowed to each service's own dir (no parent
+#     `context: ../`). This repo doesn't ship a copy of the upstream Go modules
+#     at root, so each service builds in isolation.
+#   - The upstream `test-runner` profile (full Docker test) is omitted — we run
+#     the harness from the host directly via test/run.sh.
+
+services:
+  local-kms:
+    image: nsmithuk/local-kms
+    ports:
+      - "8080:8080"
+    environment:
+      KMS_REGION: us-east-1
+      KMS_ACCOUNT_ID: "123456789012"
+    volumes:
+      - ./seed.yaml:/init/seed.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ || exit 0"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  kms-proxy:
+    build:
+      context: ./local-kms-proxy
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      UPSTREAM_KMS_URL: "http://local-kms:8080"
+      LISTEN_ADDR: ":4000"
+    depends_on:
+      local-kms:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/ || exit 0"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:4.14
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: ssm,sts,s3,cloudformation,iam,logs
+      LOCALSTACK_ACKNOWLEDGE_ACCOUNT_REQUIREMENT: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mock-imds:
+    build:
+      context: ./mock-imds
+      dockerfile: Dockerfile
+    ports:
+      - "1338:1338"
+    environment:
+      LISTEN_ADDR: ":1338"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:1338/latest/api/token || exit 0"]
+      interval: 5s
+      timeout: 3s
+      retries: 5

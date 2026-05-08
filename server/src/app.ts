@@ -1,10 +1,10 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import type { Config } from "./config.js";
 import type { ApiInfo } from "@e2ee-kv/protocol";
 import { dispatch } from "./rpc/dispatcher.js";
 import { buildHandlers, type MethodDeps } from "./rpc/methods.js";
 import type { TokenIssuer } from "./auth/jwt.js";
-import { staticHandler } from "./static.js";
 import { log } from "./log.js";
 
 export interface AppDeps extends MethodDeps {
@@ -16,6 +16,21 @@ export interface AppDeps extends MethodDeps {
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   const handlers = buildHandlers(deps);
+
+  // Cross-origin: real consumer webapps live at their own origin and call this
+  // API directly. Allowlist is configured per-deployment via CORS_ALLOWED_ORIGINS
+  // (comma-separated). Empty list ⇒ no cross-origin requests permitted.
+  if (deps.config.corsAllowedOrigins.length > 0) {
+    app.use(
+      "/api/*",
+      cors({
+        origin: deps.config.corsAllowedOrigins,
+        allowHeaders: ["authorization", "content-type"],
+        allowMethods: ["GET", "POST", "OPTIONS"],
+        maxAge: 600,
+      }),
+    );
+  }
 
   app.get("/api/info", (c) => c.json(deps.apiInfo));
 
@@ -35,8 +50,6 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get("/healthz", (c) => c.text("ok"));
-
-  app.use("*", staticHandler(deps.config.staticDir));
 
   app.notFound((c) => c.text("not_found", 404));
   app.onError((err, c) => {
