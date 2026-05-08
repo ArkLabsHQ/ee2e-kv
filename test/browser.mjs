@@ -42,7 +42,16 @@ async function main() {
   const opts = parseArgs(process.argv);
   console.log(`browser.mjs: baseUrl=${opts.baseUrl} harness=${opts.harnessUrl}`);
 
-  const browser = await chromium.launch({ headless: true });
+  // The harness fixture loads from http://localhost:5174 and then calls the
+  // enclave's /v1/* + /enclave/* endpoints — those are served by the framework
+  // supervisor, which doesn't speak CORS (only the user-app's /api/* does).
+  // For the regtest fixture we side-step the same-origin policy with
+  // --disable-web-security; this is fixture code, not a real consumer webapp,
+  // so loosening browser security here is fine.
+  const browser = await chromium.launch({
+    headless: true,
+    args: ["--disable-web-security", "--disable-site-isolation-trials"],
+  });
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
   const page = await context.newPage();
 

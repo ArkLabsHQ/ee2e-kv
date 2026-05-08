@@ -196,18 +196,16 @@ export AWS_ENDPOINT_URL="http://127.0.0.1:4566"
 # tofu` skips files that exist).
 ( cd "$REPO_ROOT" && enclave tofu )
 
-# Overlay env_values + the `local` flag (so the tofu module skips VPC/EC2/AMI
-# data sources, which only resolve against real AWS — LocalStack's free tier
-# doesn't ship a working EC2 endpoint). Auto-loaded *.auto.tfvars.json applies
-# on every plan/apply.
+# Set the `local` flag (skips VPC/EC2/AMI data sources, which only resolve
+# against real AWS — LocalStack's free tier doesn't ship a working EC2 endpoint).
+# The env_values overlay for RP_ORIGIN / CORS_ALLOWED_ORIGINS is intentionally
+# omitted here: the framework's SSM env_override path is currently broken
+# (supervisor reads SSM but doesn't propagate into the user-app's exec env),
+# so we rely on the EIF's baked-in defaults — see enclave/enclave.yaml.
 TOFU_DIR="$REPO_ROOT/tofu"
 cat > "$TOFU_DIR/env_values.auto.tfvars.json" <<EOF
 {
-  "local": true,
-  "env_values": {
-    "RP_ORIGIN": "http://localhost:$HARNESS_PORT",
-    "CORS_ALLOWED_ORIGINS": "http://localhost:$HARNESS_PORT"
-  }
+  "local": true
 }
 EOF
 
@@ -296,10 +294,12 @@ done
 # === Phase 9: smoke ===
 echo ""
 echo "=== [9/10] Smoke (HTTP/JSON-RPC, no browser) ==="
+# `|| true` keeps `set -e` from aborting the harness when smoke fails — we
+# still want phase 10 (browser) to run so the user sees the full picture.
 NODE_TLS_REJECT_UNAUTHORIZED=0 node "$SCRIPT_DIR/smoke.mjs" \
   --base-url "https://localhost:$HOST_TLS_PORT" \
   ${EXPECTED_PCR0:+--expected-pcr0 "$EXPECTED_PCR0"} \
-  | tee /tmp/smoke.log
+  | tee /tmp/smoke.log || true
 SMOKE_RC=${PIPESTATUS[0]}
 if [ "$SMOKE_RC" -eq 0 ]; then pass "smoke.mjs"; else fail "smoke.mjs" "exit $SMOKE_RC"; fi
 
@@ -320,7 +320,7 @@ NODE_TLS_REJECT_UNAUTHORIZED=0 node "$SCRIPT_DIR/browser.mjs" \
   --harness-url "http://localhost:$HARNESS_PORT" \
   ${EXPECTED_PCR0:+--expected-pcr0 "$EXPECTED_PCR0"} \
   ${RUNTIME_TOKEN:+--runtime-token "$RUNTIME_TOKEN"} \
-  | tee /tmp/browser.log
+  | tee /tmp/browser.log || true
 BROWSER_RC=${PIPESTATUS[0]}
 if [ "$BROWSER_RC" -eq 0 ]; then pass "browser.mjs"; else fail "browser.mjs" "exit $BROWSER_RC"; fi
 

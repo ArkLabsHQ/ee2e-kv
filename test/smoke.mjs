@@ -28,7 +28,11 @@ function parseArgs(argv) {
 
 let passed = 0, failed = 0;
 function pass(label) { console.log(`  PASS: ${label}`); passed++; }
-function fail(label, err) { console.log(`  FAIL: ${label} — ${err?.message ?? err}`); failed++; }
+function fail(label, err) {
+  console.log(`  FAIL: ${label} — ${err?.message ?? err}`);
+  if (err?.stack) console.log(err.stack.split("\n").slice(1, 4).map((l) => `        ${l.trim()}`).join("\n"));
+  failed++;
+}
 async function step(label, fn) {
   try { await fn(); pass(label); } catch (err) { fail(label, err); }
 }

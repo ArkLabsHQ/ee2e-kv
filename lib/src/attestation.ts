@@ -55,8 +55,13 @@ export async function verifyAttestation(input: {
   const doc = parseDoc(payloadBytes);
 
   // 1. Cert chain: cabundle[0] must chain to AWS Nitro root; doc.certificate is leaf.
-  const leaf = new x509.X509Certificate(toArrayBuffer(doc.certificate));
-  const intermediates = doc.cabundle.map((b) => new x509.X509Certificate(toArrayBuffer(b)));
+  // Pass Uint8Array directly via BufferSource cast — peculiar/x509 accepts
+  // BufferSource at runtime, but TS's `Uint8Array<ArrayBufferLike>` doesn't
+  // structurally match its `AsnEncodedType` overload. The older
+  // `new ArrayBuffer + .set()` wrapper triggered "Unsupported format of 'raw'
+  // argument" in Node when the view came out of cbor-decode.
+  const leaf = new x509.X509Certificate(doc.certificate as BufferSource);
+  const intermediates = doc.cabundle.map((b) => new x509.X509Certificate(b as BufferSource));
   const root = new x509.X509Certificate(AWS_NITRO_ROOT_PEM);
   await verifyCertChain(leaf, intermediates, root, input.now ?? new Date());
 
