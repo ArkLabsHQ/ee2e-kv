@@ -100,14 +100,9 @@ async function main() {
     }
   });
 
-  if (opts.expectedPcr0) {
-    await step("attestation pcr0 matches expected", async () => {
-      if (!flowResult) throw new Error("no flow result");
-      if (flowResult.pcr0 !== opts.expectedPcr0) {
-        throw new Error(`got ${flowResult.pcr0}, expected ${opts.expectedPcr0}`);
-      }
-    });
-  }
+  // PCR0 match is verified by smoke's structural doc check, not here —
+  // QEMU's NSM stub doesn't sign with the AWS Nitro root, so the harness
+  // can't (and shouldn't) anchor trust on the attestation chain in regtest.
 
   // CORS is verified by smoke.mjs from Node (which sends a reliable Origin
   // header). Doing it inside Chromium with --disable-web-security is

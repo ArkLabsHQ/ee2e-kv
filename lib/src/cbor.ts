@@ -10,11 +10,67 @@ export function cborDecode(buf: Uint8Array): unknown {
   return readItem(c);
 }
 
+/** Sentinel returned by readItem when it consumes a CBOR break byte (0xff). */
+const BREAK = Symbol("cbor:break");
+
 function readItem(c: Cur): unknown {
   const ib = c.b[c.o++];
   if (ib === undefined) throw new Error("cbor: eof");
   const major = ib >> 5;
   const minor = ib & 0x1f;
+  // Indefinite-length encoding: major 2/3/4/5 with minor 31 (followed by a
+  // stream of items terminated by 0xff). Major 7 with minor 31 is the break
+  // byte itself.
+  if (minor === 31) {
+    switch (major) {
+      case 2: {
+        const chunks: Uint8Array[] = [];
+        for (;;) {
+          const piece = readItem(c);
+          if (piece === BREAK) break;
+          if (!(piece instanceof Uint8Array)) throw new Error("cbor: indefinite bytes contains non-bytes");
+          chunks.push(piece);
+        }
+        const total = chunks.reduce((s, p) => s + p.length, 0);
+        const out = new Uint8Array(total);
+        let off = 0;
+        for (const p of chunks) { out.set(p, off); off += p.length; }
+        return out;
+      }
+      case 3: {
+        let s = "";
+        for (;;) {
+          const piece = readItem(c);
+          if (piece === BREAK) break;
+          if (typeof piece !== "string") throw new Error("cbor: indefinite text contains non-text");
+          s += piece;
+        }
+        return s;
+      }
+      case 4: {
+        const arr: unknown[] = [];
+        for (;;) {
+          const item = readItem(c);
+          if (item === BREAK) break;
+          arr.push(item);
+        }
+        return arr;
+      }
+      case 5: {
+        const m = new Map<unknown, unknown>();
+        for (;;) {
+          const k = readItem(c);
+          if (k === BREAK) break;
+          const v = readItem(c);
+          if (v === BREAK) throw new Error("cbor: break in map value position");
+          m.set(k, v);
+        }
+        return m;
+      }
+      case 7: return BREAK;
+      default: throw new Error(`cbor: indefinite-length not allowed for major ${major}`);
+    }
+  }
   const len = readLen(c, minor);
   const n = Number(len);
   switch (major) {

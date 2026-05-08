@@ -1,0 +1,38 @@
+name: Tests
+
+# Cheap unit-test gate — runs on every push/PR. Covers protocol schemas,
+# the @enclave-sdk/browser library (CBOR, Schnorr), server (auth, JWT,
+# sessions, KV), and client crypto (AES-GCM, base32). Does NOT boot QEMU
+# or any AWS mocks — that's the regtest workflow.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build all workspaces
+        run: npm run build

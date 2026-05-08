@@ -1,0 +1,68 @@
+name: Regtest (QEMU)
+
+# Full end-to-end regtest: builds the EIF, boots it under QEMU 9.2.4 with
+# vhost-device-vsock, brings up LocalStack + local-kms-proxy + mock-imds,
+# runs the Node smoke client and Playwright headless-browser flow against
+# the live enclave, then tears everything down.
+#
+# REQUIRES a runner with:
+#   - /dev/vsock (kernel modules: vsock + vsock_loopback)
+#   - KVM (or accept slow TCG fallback)
+#   - Docker, Nix, Go, Python3, npm
+#   - Network access to GitHub (to fetch the app source) + npm registry
+#
+# GitHub's ubuntu-latest does NOT have /dev/vsock or KVM. Use a
+# self-hosted runner labelled `nitro-regtest`, or trigger manually
+# from a developer machine via `make regtest`.
+on:
+  workflow_dispatch:
+    inputs:
+      eif_path:
+        description: 'Optional path to a pre-built EIF (skips phase 2)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  regtest:
+    runs-on: [self-hosted, nitro-regtest]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Confirm runner has /dev/vsock
+        run: |
+          test -e /dev/vsock || { echo "::error::/dev/vsock missing — load vsock + vsock_loopback modules"; exit 1; }
+          echo "vsock OK"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run regtest
+        env:
+          EIF: ${{ inputs.eif_path }}
+          INTROSPECTOR_ENCLAVE: ${{ github.workspace }}/.deps/introspector-enclave
+        run: |
+          # Clone the framework repo for the host-side supervisor build.
+          if [ ! -d "$INTROSPECTOR_ENCLAVE" ]; then
+            git clone --depth 1 https://github.com/ArkLabsHQ/introspector-enclave "$INTROSPECTOR_ENCLAVE"
+          fi
+          make regtest
+
+      - name: Upload boot log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-qemu-log
+          path: /tmp/boot-qemu.log
+          if-no-files-found: ignore

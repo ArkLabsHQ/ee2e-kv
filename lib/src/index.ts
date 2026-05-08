@@ -37,3 +37,4 @@ export {
   base64ToBytes,
   constTimeEq,
 } from "./encoding.js";
+export { cborDecode } from "./cbor.js";

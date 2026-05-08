@@ -291,6 +291,11 @@ while [ "$seconds" -lt 120 ]; do
 done
 [ "$http_code" = "200" ] || { echo "Error: enclave did not become ready within 120s" >&2; tail -50 /tmp/boot-qemu.log >&2 || true; exit 1; }
 
+# Capture the live attestation doc as a fixture for offline parser debugging.
+echo ""
+echo "  Capturing live attestation doc → test/qemu/live-attestation.b64"
+curl -sk --max-time 5 "https://localhost:$HOST_TLS_PORT/enclave/attestation?nonce=00112233445566778899aabbccddeeff00112233" > "$SCRIPT_DIR/qemu/live-attestation.b64" 2>/dev/null || true
+
 # === Phase 9: smoke ===
 echo ""
 echo "=== [9/10] Smoke (HTTP/JSON-RPC, no browser) ==="
