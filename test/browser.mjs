@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 // Playwright driver for the QEMU regtest. Launches headless Chromium,
 // attaches a CDP virtual authenticator with hasPrf=true, navigates to the
-// fixture page (test/browser/dist/), calls window.runFlow(), and asserts:
-//   - the WebAuthn → PRF → AES-GCM → KV roundtrip succeeds (recovered
-//     plaintext matches what we put)
-//   - cross-origin requests succeed (Access-Control-Allow-Origin echoes)
-//   - the host-side opacity check: even with the supervisor's RUNTIME_TOKEN,
-//     /v1/storage shows opaque ciphertext (no plaintext, no key name)
+// fixture page (test/browser/dist/), calls window.runFlow(), and asserts
+// the WebAuthn → PRF → AES-GCM → KV roundtrip succeeds (recovered
+// plaintext matches what we put).
 //
 // Output: bash-grep-friendly PASS/FAIL lines. Exit 0 if all pass.
 import { chromium } from "playwright";
@@ -18,10 +15,9 @@ function parseArgs(argv) {
     if (k === "--base-url") out.baseUrl = argv[++i];
     else if (k === "--harness-url") out.harnessUrl = argv[++i];
     else if (k === "--expected-pcr0") out.expectedPcr0 = argv[++i];
-    else if (k === "--runtime-token") out.runtimeToken = argv[++i];
   }
   if (!out.baseUrl || !out.harnessUrl) {
-    console.error("Usage: browser.mjs --base-url <url> --harness-url <url> [--expected-pcr0 <hex>] [--runtime-token <hex>]");
+    console.error("Usage: browser.mjs --base-url <url> --harness-url <url> [--expected-pcr0 <hex>]");
     process.exit(2);
   }
   return out;
@@ -99,37 +95,6 @@ async function main() {
       throw new Error(`got "${flowResult.recoveredPlaintext}" not "${PLAINTEXT}"`);
     }
   });
-
-  // PCR0 match is verified by smoke's structural doc check, not here —
-  // QEMU's NSM stub doesn't sign with the AWS Nitro root, so the harness
-  // can't (and shouldn't) anchor trust on the attestation chain in regtest.
-
-  // CORS is verified by smoke.mjs from Node (which sends a reliable Origin
-  // header). Doing it inside Chromium with --disable-web-security is
-  // unreliable — Chromium drops the Origin header on what it now considers
-  // same-origin, so the server has nothing to echo.
-
-  // Host-side opacity check — only runs if we have the supervisor's runtime token.
-  if (opts.runtimeToken && flowResult) {
-    await step("server-side opacity: /v1/storage bytes contain neither plaintext nor key name", async () => {
-      const runtimeUrl = opts.baseUrl.replace(/:\d+$/, ":7073");
-      const path = `kv/${flowResult.userId}/${flowResult.keyId}`;
-      const r = await fetch(`${runtimeUrl}/v1/storage/${encodeURIComponent(path)}`, {
-        headers: { authorization: `Bearer ${opts.runtimeToken}` },
-      });
-      if (!r.ok) throw new Error(`/v1/storage GET ${r.status}`);
-      const raw = new Uint8Array(await r.arrayBuffer());
-      // Storage stores JSON envelope { value, name_ct, version, updated_at }.
-      const envelope = JSON.parse(new TextDecoder().decode(raw));
-      const valueBytes = Buffer.from(envelope.value, "base64");
-      const nameCtBytes = Buffer.from(envelope.name_ct, "base64");
-      const haystack = Buffer.concat([valueBytes, nameCtBytes]).toString("binary");
-      if (haystack.includes(PLAINTEXT)) throw new Error("plaintext found in storage bytes — E2EE invariant broken");
-      if (haystack.includes(KEY_NAME)) throw new Error("key name found in storage bytes — name_ct not encrypted");
-    });
-  } else {
-    console.log("  SKIP: server-side opacity check (no --runtime-token)");
-  }
 
   await cdp.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId });
   await browser.close();

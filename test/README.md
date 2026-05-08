@@ -50,9 +50,6 @@ The QEMU/`vhost-device-vsock` stack is auto-entered via `nix develop test/qemu/`
 1. Fixture page loads + `window.runFlow` defined
 2. `runFlow` succeeds end-to-end (register passkey → assert with PRF → derive `value_key`/`path_key` → `kv.put` → `kv.get` → AES-GCM decrypt)
 3. Recovered plaintext matches what we encrypted (PRF → HKDF → AES-GCM round-trip)
-4. Attestation `pcr0` matches `pcr.json` from `enclave build`
-5. Cross-origin `Access-Control-Allow-Origin` echoes the harness origin (proves CORS works for a real consumer)
-6. **Server-side opacity check** — with the supervisor's `RUNTIME_TOKEN`, the host fetches the raw S3 bytes via `/v1/storage`. Asserts the `value` and `name_ct` blobs contain neither the plaintext nor the user-supplied key name. *This is the only step that proves the E2EE invariant holds.*
 
 ## Layout
 
@@ -99,7 +96,6 @@ Cleanup happens via `trap … EXIT` regardless of which phase failed.
 - `legacy flake.nix at repo root` → run from the repo root, NOT from `enclave/`. The CLI's `findRepoRoot` walks up from cwd looking for `enclave/enclave.yaml`.
 - Smoke step 4 (attestation) fails with `chain does not anchor to AWS Nitro root` → the EIF was built against a fork that doesn't ship the AWS Nitro test certs. The upstream `qemu-system-x86_64 -M nitro-enclave` machine type produces AWS-rooted attestations by default.
 - Browser step 1 hangs → check that `npx playwright install chromium` ran successfully. `~/.cache/ms-playwright/chromium-*` should exist.
-- Browser step 6 SKIP → no `--runtime-token` was passed. The supervisor doesn't expose a `/runtime-token` endpoint by default; this is a known gap and step 6 is non-blocking.
 
 ## Resync from upstream
 

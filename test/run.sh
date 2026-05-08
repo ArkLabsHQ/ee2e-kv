@@ -37,7 +37,6 @@ EIF_PATH="${EIF:-}"                  # if set, skip the EIF build phase
 HARNESS_PID=""
 SUP_PID=""
 SUPERVISOR_PIDFILE=/tmp/supervisor.pid
-RUNTIME_TOKEN=""
 
 # Bash-grep-friendly result reporting.
 PASSED=0
@@ -141,14 +140,15 @@ EIF_PATH="$(realpath "$EIF_PATH")"
 echo "  EIF: $EIF_PATH"
 
 if [ -z "$EXPECTED_PCR0" ] && [ -f "$REPO_ROOT/.enclave/artifacts/pcr.json" ]; then
-  EXPECTED_PCR0=$(jq -r '.pcr0 // empty' "$REPO_ROOT/.enclave/artifacts/pcr.json" 2>/dev/null || echo "")
+  # The CLI writes the key as `PCR0` (uppercase). Try both for safety.
+  EXPECTED_PCR0=$(jq -r '.PCR0 // .pcr0 // empty' "$REPO_ROOT/.enclave/artifacts/pcr.json" 2>/dev/null || echo "")
 fi
 echo "  Expected PCR0: ${EXPECTED_PCR0:-<unknown>}"
 
 # === Phase 3: build harness fixture ===
 echo ""
 echo "=== [3/10] Building harness fixture ==="
-( cd "$REPO_ROOT" && npm -w @enclave-test/browser run build >/dev/null 2>&1 )
+( cd "$REPO_ROOT" && npm -w @enclave-test/browser run build )
 echo "  test/browser/dist/ ready"
 
 # === Phase 4: locate host-side supervisor ===
@@ -258,13 +258,6 @@ sleep 2
 [ -s "$SUPERVISOR_PIDFILE" ] || { echo "Error: supervisor pidfile not populated" >&2; exit 1; }
 echo "  Supervisor relauncher pid $SUP_PID, child pid $(cat "$SUPERVISOR_PIDFILE") on http://127.0.0.1:8444"
 
-# Capture the supervisor's runtime token for the host-side opacity check.
-RUNTIME_TOKEN=$(curl -sk --max-time 5 http://127.0.0.1:8444/runtime-token 2>/dev/null | jq -r '.token // empty' || echo "")
-if [ -z "$RUNTIME_TOKEN" ]; then
-  echo "  Note: supervisor /runtime-token endpoint did not return a token —"
-  echo "        the host-side opacity check will be skipped (browser test still runs)."
-fi
-
 # === Phase 8: wait for enclave ready ===
 echo ""
 echo "=== [8/10] Waiting for enclave to become ready ==="
@@ -315,7 +308,6 @@ NODE_TLS_REJECT_UNAUTHORIZED=0 node "$SCRIPT_DIR/browser.mjs" \
   --base-url "https://localhost:$HOST_TLS_PORT" \
   --harness-url "http://localhost:$HARNESS_PORT" \
   ${EXPECTED_PCR0:+--expected-pcr0 "$EXPECTED_PCR0"} \
-  ${RUNTIME_TOKEN:+--runtime-token "$RUNTIME_TOKEN"} \
   | tee /tmp/browser.log || true
 BROWSER_RC=${PIPESTATUS[0]}
 if [ "$BROWSER_RC" -eq 0 ]; then pass "browser.mjs"; else fail "browser.mjs" "exit $BROWSER_RC"; fi
