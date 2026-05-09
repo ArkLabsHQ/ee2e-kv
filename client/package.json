@@ -7,13 +7,10 @@
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview",
-    "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@e2ee-kv/protocol": "*",
-    "@enclave-sdk/browser": "*",
-    "@simplewebauthn/browser": "^13.3.0"
+    "@e2ee-kv/sdk": "*"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

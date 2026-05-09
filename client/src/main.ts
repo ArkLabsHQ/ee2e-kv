@@ -1,36 +1,17 @@
-import { fetchAndVerify, RpcClient } from "@enclave-sdk/browser";
-import { register, assert } from "./auth/webauthnClient.js";
-import {
-  clearSession,
-  decryptName,
-  decryptValue,
-  deriveKeyId,
-  encryptName,
-  encryptValue,
-  getAuthToken,
-  getSession,
-  isAuthed,
-  setFromAssertion,
-} from "./auth/session.js";
+import { fetchAndVerify, KvClient } from "@e2ee-kv/sdk";
 
 const banner = document.getElementById("attestation-banner") as HTMLDivElement;
 const authSection = document.getElementById("auth-section") as HTMLDivElement;
 const kvSection = document.getElementById("kv-section") as HTMLDivElement;
 
 async function bootstrap(): Promise<void> {
-  // In dev (`vite dev`) we don't have a real Nitro CA chain or a supervisor
-  // signing responses, so we skip both attestation and per-response signature
-  // verification and show a loud banner instead. `import.meta.env.DEV` is true
-  // only for `vite dev` — `vite build` (what ships in the EIF) keeps the full
-  // verification path.
   if (import.meta.env.DEV) {
     banner.className = "banner err";
     banner.innerHTML = `
       <strong>DEV MODE — attestation NOT verified.</strong>
       The reference SPA is talking to a stub runtime. Do not enter real secrets.
     `;
-    const rpc = new RpcClient({ attestationPubkeyHex: null, authToken: getAuthToken });
-    renderAuth(rpc);
+    renderAuth(new KvClient({ attestationPubkeyHex: null }));
     return;
   }
 
@@ -54,13 +35,12 @@ async function bootstrap(): Promise<void> {
     Compare PCR0 above against the published reference for the release you trust.
   `;
 
-  const rpc = new RpcClient({ attestationPubkeyHex: pubkeyHex, authToken: getAuthToken });
-  renderAuth(rpc);
+  renderAuth(new KvClient({ attestationPubkeyHex: pubkeyHex }));
 }
 
-function renderAuth(rpc: RpcClient): void {
-  if (isAuthed()) {
-    renderKv(rpc);
+function renderAuth(kv: KvClient): void {
+  if (kv.isAuthed()) {
+    renderKv(kv);
     return;
   }
   authSection.innerHTML = `
@@ -79,37 +59,20 @@ function renderAuth(rpc: RpcClient): void {
   };
 
   document.getElementById("btn-register")!.addEventListener("click", async () => {
-    try {
-      const r = await register(rpc);
-      // Registration completes without PRF results — must assert to derive keys.
-      log.hidden = false;
-      log.textContent = `Registered user ${r.userId}. Now signing in to derive keys…`;
-      const a = await assert(rpc, { userId: r.userId });
-      if (!a.prfFirst) throw new Error("authenticator did not return PRF output — passkey is not E2EE-capable");
-      await setFromAssertion({ userId: a.userId, authToken: a.authToken, expiresAt: a.expiresAt, prfFirst: a.prfFirst });
-      renderKv(rpc);
-    } catch (e) { showErr(e); }
+    try { await kv.register(); renderKv(kv); } catch (e) { showErr(e); }
   });
-
   document.getElementById("btn-assert")!.addEventListener("click", async () => {
-    try {
-      const a = await assert(rpc);
-      if (!a.prfFirst) throw new Error("authenticator did not return PRF output");
-      await setFromAssertion({ userId: a.userId, authToken: a.authToken, expiresAt: a.expiresAt, prfFirst: a.prfFirst });
-      renderKv(rpc);
-    } catch (e) { showErr(e); }
+    try { await kv.assert(); renderKv(kv); } catch (e) { showErr(e); }
   });
 }
 
-interface KvListItem { key_id: string; name_ct: string; version: number }
-
-function renderKv(rpc: RpcClient): void {
+function renderKv(kv: KvClient): void {
   authSection.innerHTML = `
-    <p>Signed in as <code>${escapeHtml(getSession()!.userId)}</code>
+    <p>Signed in as <code>${escapeHtml(kv.getSession()!.userId)}</code>
        <button id="btn-logout">Log out</button></p>
   `;
   document.getElementById("btn-logout")!.addEventListener("click", () => {
-    clearSession();
+    kv.logout();
     location.reload();
   });
 
@@ -125,31 +88,16 @@ function renderKv(rpc: RpcClient): void {
     </div>
     <pre id="kv-log" hidden></pre>
   `;
-  void refreshKv(rpc);
+  void refreshKv(kv);
 
   document.getElementById("kv-put")!.addEventListener("click", async () => {
     const name = (document.getElementById("kv-name") as HTMLInputElement).value;
     const value = (document.getElementById("kv-value") as HTMLInputElement).value;
     const log = document.getElementById("kv-log") as HTMLPreElement;
     try {
-      const keyId = await deriveKeyId(name);
-      let expectedVersion = 0;
-      try {
-        const got = await rpc.call<{ version: number }>("kv.get", { key_id: keyId });
-        expectedVersion = got.version;
-      } catch {
-        // not_found -> version 0
-      }
-      const valueB64 = await encryptValue(new TextEncoder().encode(value));
-      const nameCt = await encryptName(name);
-      await rpc.call("kv.put", {
-        key_id: keyId,
-        value: valueB64,
-        name_ct: nameCt,
-        expected_version: expectedVersion,
-      });
+      await kv.put(name, value);
       log.hidden = true;
-      await refreshKv(rpc);
+      await refreshKv(kv);
     } catch (e) {
       log.hidden = false;
       log.textContent = `error: ${(e as Error).message}`;
@@ -157,36 +105,31 @@ function renderKv(rpc: RpcClient): void {
   });
 }
 
-async function refreshKv(rpc: RpcClient): Promise<void> {
-  const out = await rpc.call<{ items: KvListItem[] }>("kv.list", {});
+async function refreshKv(kv: KvClient): Promise<void> {
+  const items = await kv.list();
   const list = document.getElementById("kv-list") as HTMLUListElement;
   list.innerHTML = "";
-  for (const it of out.items) {
-    const name = await decryptName(it.name_ct);
+  for (const it of items) {
     const li = document.createElement("li");
     li.innerHTML = `
-      <span><strong>${escapeHtml(name)}</strong> <code>v${it.version}</code></span>
+      <span><strong>${escapeHtml(it.name)}</strong> <code>v${it.version}</code></span>
       <span>
-        <button data-id="${escapeHtml(it.key_id)}" class="btn-show">Show</button>
-        <button data-id="${escapeHtml(it.key_id)}" data-v="${it.version}" class="btn-del">Delete</button>
+        <button data-name="${escapeHtml(it.name)}" class="btn-show">Show</button>
+        <button data-name="${escapeHtml(it.name)}" data-v="${it.version}" class="btn-del">Delete</button>
       </span>
     `;
     list.appendChild(li);
   }
   list.querySelectorAll<HTMLButtonElement>(".btn-show").forEach((b) => {
     b.addEventListener("click", async () => {
-      const keyId = b.dataset["id"]!;
-      const got = await rpc.call<{ value: string }>("kv.get", { key_id: keyId });
-      const pt = await decryptValue(got.value);
-      alert(new TextDecoder().decode(pt));
+      const got = await kv.get(b.dataset["name"]!);
+      alert(got?.value ?? "(not found)");
     });
   });
   list.querySelectorAll<HTMLButtonElement>(".btn-del").forEach((b) => {
     b.addEventListener("click", async () => {
-      const keyId = b.dataset["id"]!;
-      const v = parseInt(b.dataset["v"]!, 10);
-      await rpc.call("kv.del", { key_id: keyId, expected_version: v });
-      await refreshKv(rpc);
+      await kv.del(b.dataset["name"]!, parseInt(b.dataset["v"]!, 10));
+      await refreshKv(kv);
     });
   });
 }

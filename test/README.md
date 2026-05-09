@@ -3,7 +3,7 @@
 Boots the EIF in QEMU, drives it through a Node smoke client and a Playwright headless-browser flow, then tears everything down. Two products are exercised:
 
 1. **The server** — JSON-RPC API + WebAuthn + KV. Tested via the smoke client.
-2. **`@enclave-sdk/browser`** — the library a real consumer webapp would consume. Tested via both the smoke client (Node) and the harness fixture page (real browser).
+2. **`@e2ee-kv/sdk`** — the library a real consumer webapp would consume. Tested via both the smoke client (Node) and the harness fixture page (real browser).
 
 The reference SPA in `client/` is uninvolved here — the regtest uses its own minimal fixture page (`test/browser/`) so the SPA stays out of the trust path.
 
@@ -39,7 +39,7 @@ The QEMU/`vhost-device-vsock` stack is auto-entered via `nix develop test/qemu/`
 1. `GET /healthz` → 200 ok
 2. `GET /api/info` returns `version` + `providers: ["webauthn"]` + `rp.id`
 3. `GET /v1/enclave-info` exposes `attestation_pubkey`
-4. **Attestation chain verifies** via `@enclave-sdk/browser`'s `fetchAndVerify` (cert chain → AWS Nitro root → COSE_Sign1 sig → nonce → PCR0 → appKeyHash binding)
+4. **Attestation chain verifies** via `@e2ee-kv/sdk`'s `fetchAndVerify` (cert chain → AWS Nitro root → COSE_Sign1 sig → nonce → PCR0 → appKeyHash binding)
 5. `session.begin` returns a 32-byte base64 `server_nonce` + `expires_at`
 6. `auth.webauthn.assert.begin` advertises `prf: {}` only (no `eval` on the wire — proves the client-side-only PRF salt convention)
 7. `kv.get` without bearer → JSON-RPC `-32001 unauthorized`
@@ -56,11 +56,11 @@ The QEMU/`vhost-device-vsock` stack is auto-entered via `nix develop test/qemu/`
 ```
 test/
 ├── run.sh                   # main 10-phase orchestrator
-├── smoke.mjs                # Node smoke client (uses @enclave-sdk/browser)
+├── smoke.mjs                # Node smoke client (uses @e2ee-kv/sdk)
 ├── browser.mjs              # Playwright driver + host-side opacity check
 ├── browser/                 # `@enclave-test/browser` workspace — fixture page
 │   ├── index.html
-│   └── src/harness.ts       # imports @enclave-sdk/browser, exposes window.runFlow
+│   └── src/harness.ts       # imports @e2ee-kv/sdk, exposes window.runFlow
 ├── mock-runtime.mjs         # stand-in supervisor for `make dev` (NOT used by regtest)
 └── qemu/                    # vendored from upstream — see UPSTREAM.md
     ├── boot.sh              # QEMU launcher (lifted from upstream `boot_qemu`)

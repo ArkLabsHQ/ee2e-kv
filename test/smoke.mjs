@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Node smoke client for the QEMU regtest. Imports @enclave-sdk/browser
+// Node smoke client for the QEMU regtest. Imports @e2ee-kv/sdk
 // (the same SDK consumer webapps would use) and verifies the JSON-RPC API,
 // attestation chain, Schnorr response signatures end-to-end against the
 // live EIF.
@@ -11,7 +11,7 @@ import {
   decodeAttestationDocB64,
   cborDecode,
   RpcClient,
-} from "@enclave-sdk/browser";
+} from "@e2ee-kv/sdk";
 
 function parseArgs(argv) {
   const out = {};

@@ -11,8 +11,8 @@
     "test/browser"
   ],
   "scripts": {
-    "build": "npm -w @e2ee-kv/protocol run build && npm -w @enclave-sdk/browser run build && npm -w e2ee-kv-server run build && npm -w e2ee-kv-client run build",
-    "test": "npm -w @e2ee-kv/protocol test --if-present && npm -w @enclave-sdk/browser test --if-present && npm -w e2ee-kv-server test --if-present && npm -w e2ee-kv-client test --if-present",
+    "build": "npm -w @e2ee-kv/protocol run build && npm -w @e2ee-kv/sdk run build && npm -w e2ee-kv-server run build && npm -w e2ee-kv-client run build",
+    "test": "npm -w @e2ee-kv/protocol test --if-present && npm -w @e2ee-kv/sdk test --if-present && npm -w e2ee-kv-server test --if-present && npm -w e2ee-kv-client test --if-present",
     "typecheck": "tsc -b protocol lib server client",
     "dev:server": "npm -w e2ee-kv-server run dev",
     "dev:client": "npm -w e2ee-kv-client run dev",

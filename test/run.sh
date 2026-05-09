@@ -153,12 +153,12 @@ fi
 echo "  Expected PCR0: ${EXPECTED_PCR0:-<unknown>}"
 
 # === Phase 3: build harness fixture ===
-# Build @enclave-sdk/browser first — the harness's vite build resolves
+# Build @e2ee-kv/sdk first — the harness's vite build resolves
 # its `main` field, which points at lib/dist/. On a fresh checkout
 # (e.g. CI) that directory doesn't exist yet.
 echo ""
 echo "=== [3/10] Building harness fixture ==="
-( cd "$REPO_ROOT" && npm -w @enclave-sdk/browser run build && npm -w @enclave-test/browser run build )
+( cd "$REPO_ROOT" && npm -w @e2ee-kv/sdk run build && npm -w @enclave-test/browser run build )
 echo "  test/browser/dist/ ready"
 
 # === Phase 4: locate host-side supervisor ===

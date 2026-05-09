@@ -24,7 +24,7 @@ Resync by diffing against the upstream paths listed below.
 ## What we did NOT vendor
 
 - `test/run.sh` (54KB) — we write our own at `../run.sh` tailored to e2ee-kv's smaller phase set (no migration test).
-- `test/integration-test.sh` (17KB bash assertions) — replaced by `test/smoke.mjs` (Node, imports `@enclave-sdk/browser`).
+- `test/integration-test.sh` (17KB bash assertions) — replaced by `test/smoke.mjs` (Node, imports `@e2ee-kv/sdk`).
 - `test/Dockerfile.runner`, `test/Dockerfile.supervisor` — we run the harness from the host, not in a container.
 - `test/app/` — upstream's reference user-app; we have our own at `enclave-e2ee-kv/server/`.
 - `test/.github/`, `test/tofu-*.log`, `test/README.md` — not relevant here.
