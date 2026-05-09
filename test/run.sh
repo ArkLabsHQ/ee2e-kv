@@ -46,6 +46,10 @@ fail() { echo "  FAIL: $1${2:+ — $2}"; FAILED=$((FAILED + 1)); }
 
 # --- Cleanup trap ---
 cleanup() {
+  # Capture exit code IMMEDIATELY — must be the first statement, otherwise
+  # any command below (echo, kill, etc.) clobbers $? and an early `set -e`
+  # abort silently turns into a successful run.
+  local rc=$?
   echo ""
   echo "=== Cleaning up ==="
   [ -n "$HARNESS_PID" ] && kill "$HARNESS_PID" 2>/dev/null && echo "  Stopped harness server" || true
@@ -61,7 +65,10 @@ cleanup() {
   rm -f "/tmp/vhost4.socket"
   echo ""
   echo "=== Result: $PASSED passed, $FAILED failed ==="
-  exit $FAILED
+  # If a phase died early (set -e) before any sub-test ran, $FAILED is 0
+  # but $rc is non-zero — propagate that so CI sees the failure.
+  [ "$FAILED" -gt 0 ] && exit "$FAILED"
+  exit "$rc"
 }
 trap cleanup EXIT INT TERM
 
@@ -146,9 +153,12 @@ fi
 echo "  Expected PCR0: ${EXPECTED_PCR0:-<unknown>}"
 
 # === Phase 3: build harness fixture ===
+# Build @enclave-sdk/browser first — the harness's vite build resolves
+# its `main` field, which points at lib/dist/. On a fresh checkout
+# (e.g. CI) that directory doesn't exist yet.
 echo ""
 echo "=== [3/10] Building harness fixture ==="
-( cd "$REPO_ROOT" && npm -w @enclave-test/browser run build )
+( cd "$REPO_ROOT" && npm -w @enclave-sdk/browser run build && npm -w @enclave-test/browser run build )
 echo "  test/browser/dist/ ready"
 
 # === Phase 4: locate host-side supervisor ===
