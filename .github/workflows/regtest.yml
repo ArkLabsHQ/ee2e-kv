@@ -85,7 +85,7 @@ jobs:
 
       - name: Install enclave CLI
         run: |
-          go install github.com/ArkLabsHQ/introspector-enclave/cli/cmd/enclave@latest
+          go install github.com/ArkLabsHQ/introspector-enclave/cli/cmd/enclave@v0.0.75
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Install OpenTofu

@@ -28,9 +28,9 @@ app:
   # Secrets are passed as environment variables. No runtime imports needed.
   nix_owner: "ArkLabsHQ"                  # GitHub owner (required)
   nix_repo: "ee2e-kv"                   # GitHub repo name (required)
-  nix_rev: "3ae4d37036933449a64c41b7d91de69bc75e5df3"                    # Git commit SHA (required)
-  nix_hash: "sha256-9zNxHhF02dpF1u7Q3OR7bP+vflYK/N8HdQnCavYN6FE="                   # Nix source hash: nix-prefetch-url --unpack (required)
-  nix_vendor_hash: "sha256-3xdyvKRL8I7BUKzRTyhwi8bXqyKTbwgGMZYIqxOw0YU="            # Go vendor hash (required)
+  nix_rev: "c684ea5ec6133abb0706a05f96daf33e39d8e548"                    # Git commit SHA (required)
+  nix_hash: "sha256-UTTKsY8Q4T2I8gUtHGkUwFPQAbLTCrIBQ22DZw99qvs="                   # Nix source hash: nix-prefetch-url --unpack (required)
+  nix_vendor_hash: "sha256-cplKazujfHO3P5UAnjTChVOC6wnuMmDkKq77FP52gDg="            # Go vendor hash (required)
   nix_sub_packages:              # Unused for nodejs apps (Go-only); leave as-is
     - "."
   nix_subdir: ""                 # Empty: build runs at workspace root so npm workspaces resolve
