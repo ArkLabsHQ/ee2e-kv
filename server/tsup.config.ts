@@ -11,11 +11,18 @@ export default defineConfig({
   minify: false,
   bundle: true,
   // Bundle every dep into a single self-contained ESM file so the EIF
-  // doesn't need to ship node_modules. v13's @simplewebauthn/server dropped
-  // its node-fetch transitive (the only CJS pkg with a dynamic require()
-  // that broke ESM bundling), so [/.*/] is safe again. If a future dep
-  // pulls dynamic require() back in, narrow this regex rather than
-  // re-introducing the workspace-wide node_modules ship.
+  // doesn't need to ship node_modules.
   noExternal: [/.*/],
   platform: "node",
+  // The OpenTelemetry packages are CommonJS and dynamically require() Node
+  // built-ins (async_hooks, perf_hooks, ...). esbuild can't statically bundle
+  // those, so it emits a __require shim that throws at runtime. Defining a real
+  // `require` via createRequire — ahead of that shim — makes the shim delegate
+  // to it, so the dynamic requires resolve against Node's built-in modules.
+  banner: {
+    js: [
+      "import { createRequire as __nodeCreateRequire } from 'node:module';",
+      "const require = __nodeCreateRequire(import.meta.url);",
+    ].join("\n"),
+  },
 });

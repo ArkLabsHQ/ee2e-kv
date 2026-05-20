@@ -1,3 +1,4 @@
+import { trace } from "@opentelemetry/api";
 import { ErrorCode, MethodSchemas, type Method } from "@e2ee-kv/protocol";
 import type { Ctx } from "./context.js";
 import { RpcAppError } from "./dispatcher.js";
@@ -19,6 +20,12 @@ export interface MethodDeps {
 
 export type MethodHandler = (params: unknown, ctx: Ctx) => Promise<unknown>;
 
+// Enriches the active rpc.dispatch span with method-specific detail. No new
+// span — this is just metadata on the one span the dispatcher already owns.
+function activeSpan() {
+  return trace.getActiveSpan();
+}
+
 export function buildHandlers(deps: MethodDeps): Record<Method, MethodHandler> {
   return {
     "session.begin": async () => {
@@ -28,6 +35,7 @@ export function buildHandlers(deps: MethodDeps): Record<Method, MethodHandler> {
 
     "auth.webauthn.register.begin": async (params, ctx) => {
       const p = MethodSchemas["auth.webauthn.register.begin"].params.parse(params);
+      activeSpan()?.setAttribute("auth.user_handle", p.user_handle ?? "(new)");
       // If user_handle is given, must be authed AND match
       if (p.user_handle) {
         if (!ctx.auth) throw new RpcAppError(ErrorCode.unauthorized, "auth required to add credential");
@@ -59,6 +67,7 @@ export function buildHandlers(deps: MethodDeps): Record<Method, MethodHandler> {
 
     "auth.webauthn.assert.begin": async (params) => {
       const p = MethodSchemas["auth.webauthn.assert.begin"].params.parse(params);
+      activeSpan()?.setAttribute("user.id", p.user_id ?? "(discoverable)");
       const r = await deps.provider.beginAssert(p.user_id);
       return { server_nonce: r.serverNonce, options: r.options };
     },
@@ -91,12 +100,14 @@ export function buildHandlers(deps: MethodDeps): Record<Method, MethodHandler> {
         if (c.transports) item.transports = c.transports;
         return item;
       });
+      activeSpan()?.setAttribute("webauthn.credentials_count", credentials.length);
       return { credentials };
     },
 
     "auth.credentials.delete": async (params, ctx) => {
       const userId = requireAuth(ctx);
       const p = MethodSchemas["auth.credentials.delete"].params.parse(params);
+      activeSpan()?.setAttribute("webauthn.credential_id", p.credential_id);
       const user = await deps.provider.loadUser(userId);
       if (!user) throw new RpcAppError(ErrorCode.not_found, "user");
       const idx = user.credentials.findIndex((c) => c.id === p.credential_id);
@@ -114,6 +125,7 @@ export function buildHandlers(deps: MethodDeps): Record<Method, MethodHandler> {
     "kv.get": async (params, ctx) => {
       const userId = requireAuth(ctx);
       const p = MethodSchemas["kv.get"].params.parse(params);
+      activeSpan()?.setAttribute("kv.key_id", p.key_id);
       const rec = await deps.kv.get(userId, p.key_id);
       if (!rec) throw new RpcAppError(ErrorCode.not_found, "key");
       return { value: rec.value, name_ct: rec.name_ct, version: rec.version };
@@ -122,6 +134,10 @@ export function buildHandlers(deps: MethodDeps): Record<Method, MethodHandler> {
     "kv.put": async (params, ctx) => {
       const userId = requireAuth(ctx);
       const p = MethodSchemas["kv.put"].params.parse(params);
+      activeSpan()?.setAttributes({
+        "kv.key_id": p.key_id,
+        "kv.expected_version": p.expected_version,
+      });
       const r = await deps.kv.put(userId, p.key_id, p.value, p.name_ct, p.expected_version);
       if (r.kind === "conflict") {
         throw new RpcAppError(ErrorCode.version_conflict, "version_conflict", { current_version: r.current_version });
@@ -132,6 +148,10 @@ export function buildHandlers(deps: MethodDeps): Record<Method, MethodHandler> {
     "kv.del": async (params, ctx) => {
       const userId = requireAuth(ctx);
       const p = MethodSchemas["kv.del"].params.parse(params);
+      activeSpan()?.setAttributes({
+        "kv.key_id": p.key_id,
+        "kv.expected_version": p.expected_version,
+      });
       const r = await deps.kv.del(userId, p.key_id, p.expected_version);
       if (r.kind === "not_found") throw new RpcAppError(ErrorCode.not_found, "key");
       if (r.kind === "conflict") {
@@ -143,13 +163,16 @@ export function buildHandlers(deps: MethodDeps): Record<Method, MethodHandler> {
     "kv.list": async (params, ctx) => {
       const userId = requireAuth(ctx);
       const p = MethodSchemas["kv.list"].params.parse(params);
+      activeSpan()?.setAttributes({ "kv.cursor": p.cursor, "kv.limit": p.limit ?? 100 });
       const out = await deps.kv.list(userId, p.cursor, p.limit ?? 100);
+      activeSpan()?.setAttribute("kv.items_returned", out.items.length);
       return out;
     },
 
     "kv.batch_get": async (params, ctx) => {
       const userId = requireAuth(ctx);
       const p = MethodSchemas["kv.batch_get"].params.parse(params);
+      activeSpan()?.setAttribute("kv.batch_size", p.key_ids.length);
       const results: Record<string, unknown> = {};
       for (const id of p.key_ids) {
         const rec = await deps.kv.get(userId, id);
@@ -163,6 +186,7 @@ export function buildHandlers(deps: MethodDeps): Record<Method, MethodHandler> {
     "kv.batch_put": async (params, ctx) => {
       const userId = requireAuth(ctx);
       const p = MethodSchemas["kv.batch_put"].params.parse(params);
+      activeSpan()?.setAttribute("kv.batch_size", p.items.length);
       const results: unknown[] = [];
       for (const item of p.items) {
         const r = await deps.kv.put(userId, item.key_id, item.value, item.name_ct, item.expected_version);
