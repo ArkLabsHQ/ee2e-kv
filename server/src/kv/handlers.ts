@@ -1,3 +1,4 @@
+import { trace } from "@opentelemetry/api";
 import type { StorageClient } from "../storage/client.js";
 import { kvKey, kvUserPrefix } from "../storage/keys.js";
 import { decode, encode, type KvRecord } from "./codec.js";
@@ -27,6 +28,11 @@ export class KvService {
     const current = await this.get(userId, keyId);
     const currentVersion = current?.version ?? 0;
     if (currentVersion !== expectedVersion) {
+
+      trace.getActiveSpan()?.setAttributes({
+        "kv.outcome": "conflict",
+        "kv.current_version": currentVersion,
+      });
       return { kind: "conflict", current_version: currentVersion };
     }
     const next: KvRecord = {
@@ -47,6 +53,10 @@ export class KvService {
     const current = await this.get(userId, keyId);
     if (!current) return { kind: "not_found" };
     if (current.version !== expectedVersion) {
+      trace.getActiveSpan()?.setAttributes({
+        "kv.outcome": "conflict",
+        "kv.current_version": current.version,
+      });
       return { kind: "conflict", current_version: current.version };
     }
     await this.storage.delete(kvKey(userId, keyId));
@@ -72,6 +82,11 @@ export class KvService {
       items.push({ key_id: keyId, name_ct: rec.name_ct, version: rec.version });
     }
     const nextCursor = slice.length === limit ? slice[slice.length - 1] : undefined;
+
+    trace.getActiveSpan()?.setAttributes({
+      "kv.scanned": allKeys.length,
+      "kv.returned": items.length,
+    });
     return nextCursor ? { items, next_cursor: nextCursor } : { items };
   }
 }

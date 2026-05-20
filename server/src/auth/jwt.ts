@@ -1,5 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { trace } from "@opentelemetry/api";
 import { TtlLru } from "../lru.js";
+import { tokenVerify } from "../metrics.js";
 
 export interface AuthClaims {
   user_id: string;
@@ -26,10 +28,24 @@ export class TokenIssuer {
     const payload = b64url(Buffer.from(JSON.stringify(claims)));
     const signingInput = `${header}.${payload}`;
     const sig = b64url(this.sign(Buffer.from(signingInput, "utf8")));
+    trace.getActiveSpan()?.setAttribute("jwt.jti", useJti);
     return { token: `${signingInput}.${sig}`, expiresAt: exp * 1000, jti: useJti };
   }
 
   verify(token: string): AuthClaims {
+    try {
+      const claims = this.checkToken(token);
+      tokenVerify.add(1, { outcome: "ok" });
+      return claims;
+    } catch (e) {
+      tokenVerify.add(1, {
+        outcome: e instanceof TokenError ? e.reason.replace(/\s+/g, "_") : "error",
+      });
+      throw e;
+    }
+  }
+
+  private checkToken(token: string): AuthClaims {
     const parts = token.split(".");
     if (parts.length !== 3) throw new TokenError("malformed");
     const [h, p, s] = parts as [string, string, string];
@@ -63,7 +79,7 @@ export class TokenIssuer {
 }
 
 export class TokenError extends Error {
-  constructor(reason: string) {
+  constructor(public readonly reason: string) {
     super(`token: ${reason}`);
     this.name = "TokenError";
   }
