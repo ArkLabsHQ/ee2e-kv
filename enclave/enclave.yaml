@@ -4,7 +4,7 @@
 name: e2ee-kv                    # App name (used in stack name, EIF name)
 version: 0.0.2                   # Build version (semver, baked into binary via ldflags)
 region: us-east-1                # AWS region
-account: ""                      # AWS account ID (required)
+account: "071680046198"                      # AWS account ID (required)
 prefix: dev                      # Deployment prefix (stack = {prefix}Nitro{Name})
 instance_type: m6i.xlarge        # EC2 instance type
 migration_cooldown: "1m"         # Cooldown before migration proceeds
@@ -15,9 +15,9 @@ is_kms_key_locked: false         # false (default): grant AWS root kms:PutKeyPol
 # The supervisor handles attestation, secrets, PCR extension, and signing
 # middleware automatically. Your app is a plain HTTP server with zero runtime imports.
 runtime:
-  rev: "v0.0.75"
-  hash: "sha256-QKz8cYewOBJFf854DXkkIajPgQskBc8xmHsrie2R1Oc="
-  vendor_hash: "sha256-2ZX9x2voIwVkUsmrZvhJssAQqnCh8/HLwopL5HpiaOg="
+  rev: "v0.0.78"
+  hash: "sha256-f+mO7E+y2Ku0qRsE8S4QOCA48vgyySJtn7uWDaodQCs="
+  vendor_hash: "sha256-kkgp+uxc9pohZiCnz84nyXroUzsPhhtb0VgGa3dQgUo="
 
 app:
   language: "nodejs"             # App language: go, nodejs, dotnet, rust
@@ -28,8 +28,8 @@ app:
   # Secrets are passed as environment variables. No runtime imports needed.
   nix_owner: "ArkLabsHQ"                  # GitHub owner (required)
   nix_repo: "ee2e-kv"                   # GitHub repo name (required)
-  nix_rev: "c684ea5ec6133abb0706a05f96daf33e39d8e548"                    # Git commit SHA (required)
-  nix_hash: "sha256-UTTKsY8Q4T2I8gUtHGkUwFPQAbLTCrIBQ22DZw99qvs="                   # Nix source hash: nix-prefetch-url --unpack (required)
+  nix_rev: "4a682a4906a2d9f02d060a7c8a517941ad607d14"                    # Git commit SHA (required)
+  nix_hash: "sha256-60YU4TjzgRbVDIl1msgOnNQn5EkMdM3QO/pFSBjjWFo="                   # Nix source hash: nix-prefetch-url --unpack (required)
   nix_vendor_hash: "sha256-cplKazujfHO3P5UAnjTChVOC6wnuMmDkKq77FP52gDg="            # Go vendor hash (required)
   nix_sub_packages:              # Unused for nodejs apps (Go-only); leave as-is
     - "."
@@ -47,21 +47,18 @@ app:
     # WebAuthn relying-party identity. RP_ID and RP_ORIGIN must match the
     # public hostname/scheme the user's browser sees. Override per-deployment
     # via `enclave tofu` -var 'env_values=...'.
-    RP_ID: "localhost"
+    RP_ID: "e2ee.vtxos.com"
     RP_NAME: "Enclave KV"
-    # Baked default targets the regtest fixture origin (test/browser/ static
-    # server on :5174). `make dev` overrides this to http://localhost:5173 by
-    # exporting RP_ORIGIN directly into the user-app's process env (which wins
-    # over baked defaults). Production deployments rebuild the EIF with their
-    # real origin baked in — until the framework's SSM env_override path is
-    # fixed (currently the supervisor reads SSM but doesn't propagate into the
-    # exec'd user-app's environment).
-    RP_ORIGIN: "http://localhost:5174"
+    # Production frontend origin — where the SPA runs and WebAuthn ceremonies
+    # happen. The SPA is on Cloudflare Pages at e2ee.vtxos.com. `make dev`
+    # overrides this to http://localhost:5173 via process env, so local dev is
+    # unaffected by this baked value.
+    RP_ORIGIN: "https://e2ee.vtxos.com"
     APP_VERSION: "0.0.1"
     # Comma-separated list of consumer-webapp origins allowed to call /api/*
     # cross-origin. Same baking story as RP_ORIGIN above. Production deploys
     # rebuild the EIF with their real consumer origin(s).
-    CORS_ALLOWED_ORIGINS: "http://localhost:5174"
+    CORS_ALLOWED_ORIGINS: "https://e2ee.vtxos.com"
     # AWS endpoints via gvproxy TAP. host.containers.internal resolves to the
     # host from inside the enclave; in production gvproxy routes these to real
     # AWS endpoints, in the regtest harness they hit local-kms-proxy / LocalStack.

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(echo \"TEST_EXIT:$?\")",
+      "Bash(echo \"BUILD_EXIT:$?\")",
+      "Bash(timeout 6 env ENCLAVE_RUNTIME_TOKEN=smoke-test-token OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:9 node dist/index.js)",
+      "Bash(awk -F'\"' '/nix_rev:/ {print $2; exit}' enclave/enclave.yaml)",
+      "Bash(npx --yes wrangler whoami)"
+    ]
+  }
+}
