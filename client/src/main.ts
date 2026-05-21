@@ -1,5 +1,9 @@
 import { fetchAndVerify, KvClient } from "@e2ee-kv/sdk";
 
+// API origin of the enclave. Empty ⇒ same-origin (dev uses the vite proxy);
+// set VITE_ENCLAVE_URL at build time to target a deployed enclave.
+const ENCLAVE_URL = import.meta.env.VITE_ENCLAVE_URL ?? "";
+
 const banner = document.getElementById("attestation-banner") as HTMLDivElement;
 const authSection = document.getElementById("auth-section") as HTMLDivElement;
 const kvSection = document.getElementById("kv-section") as HTMLDivElement;
@@ -18,7 +22,7 @@ async function bootstrap(): Promise<void> {
   let pubkeyHex: string;
   let pcr0Hex: string;
   try {
-    const verified = await fetchAndVerify();
+    const verified = await fetchAndVerify(ENCLAVE_URL);
     pubkeyHex = verified.attestationPubkeyHex;
     pcr0Hex = verified.pcr0Hex;
   } catch (err) {
@@ -35,7 +39,7 @@ async function bootstrap(): Promise<void> {
     Compare PCR0 above against the published reference for the release you trust.
   `;
 
-  renderAuth(new KvClient({ attestationPubkeyHex: pubkeyHex }));
+  renderAuth(new KvClient({ attestationPubkeyHex: pubkeyHex, baseUrl: ENCLAVE_URL }));
 }
 
 function renderAuth(kv: KvClient): void {
