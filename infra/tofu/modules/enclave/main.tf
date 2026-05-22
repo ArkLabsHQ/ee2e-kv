@@ -184,7 +184,7 @@ resource "aws_kms_key" "pcr0_signing" {
   deletion_window_in_days  = 30
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
