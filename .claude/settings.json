@@ -6,7 +6,13 @@
       "Bash(echo \"BUILD_EXIT:$?\")",
       "Bash(timeout 6 env ENCLAVE_RUNTIME_TOKEN=smoke-test-token OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:9 node dist/index.js)",
       "Bash(awk -F'\"' '/nix_rev:/ {print $2; exit}' enclave/enclave.yaml)",
-      "Bash(npx --yes wrangler whoami)"
+      "Bash(npx --yes wrangler whoami)",
+      "Bash(ps -o pid,ppid,%cpu,%mem,stat,etime,cmd -p 3540824,3545611,3545620)",
+      "Bash(ps -eo pid,%cpu,etime,comm)",
+      "Bash(ip -br link show enp4s0)",
+      "Bash(ip -br link show wlp5s0)",
+      "Bash(ip route *)",
+      "Bash(export AWS_PROFILE=e2ee-deployer)"
     ]
   }
 }
