@@ -2,6 +2,7 @@
 // module creates a tracer, meter, or logger handle.
 import { shutdownTelemetry, telemetryEnabled, withSpan } from "./telemetry.js";
 import { serve } from "@hono/node-server";
+import { createServer } from "node:http2";
 import { loadConfig } from "./config.js";
 import { HttpStorageClient } from "./storage/client.js";
 import { SessionStore } from "./auth/sessions.js";
@@ -30,9 +31,22 @@ async function main(): Promise<void> {
     const apiInfo = buildApiInfo({ version: config.version, rp: config.rp });
     const app = createApp({ config, apiInfo, sessions, tokens, provider, kv, storage });
 
-    serve({ fetch: app.fetch, port: config.port, hostname: "0.0.0.0" }, ({ port }) => {
-      log.info("listening", { port });
-    });
+    // Serve h2c — the enclave runtime reverse-proxies to the app over HTTP/2 cleartext.
+    // The cast works around @hono/node-server's serve() Options union: it has a valid
+    // h2c branch (createHttp2Options) but TS can't select it past the overlapping
+    // createSecureHttp2Options branch. http2.createServer is supported at runtime.
+    serve(
+      {
+        fetch: app.fetch,
+        port: config.port,
+        hostname: "0.0.0.0",
+        createServer,
+        serverOptions: { allowHTTP1: true },
+      } as Parameters<typeof serve>[0],
+      ({ port }) => {
+        log.info("listening", { port });
+      },
+    );
   });
 }
 
