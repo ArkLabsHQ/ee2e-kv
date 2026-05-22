@@ -44,11 +44,12 @@ let loggerProvider: LoggerProvider | undefined;
 
 if (telemetryEnabled) {
   // The OTLP endpoint is the runtime supervisor. The OTEL SDK appends the
-  // standard /v1/{traces,metrics,logs} signal paths to this base.
+  // standard /v1/{traces,metrics,logs} signal paths to this base. Derived from
+  // ENCLAVE_PROXY_PORT — the same source loadConfig() uses for runtimeBaseUrl —
+  // so storage and telemetry can never drift onto different ports.
   const endpoint = (
     env.OTEL_EXPORTER_OTLP_ENDPOINT ??
-    env.ENCLAVE_PROXY_PORT ??
-    "http://127.0.0.1:7073"
+    `http://127.0.0.1:${env.ENCLAVE_PROXY_PORT ?? "8080"}`
   ).replace(/\/+$/, "");
   const headers = { Authorization: `Bearer ${runtimeToken}` };
   const metricIntervalMs = Number(env.OTEL_METRIC_EXPORT_INTERVAL_MS) || 5000;
