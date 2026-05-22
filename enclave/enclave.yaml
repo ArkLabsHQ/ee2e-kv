@@ -1,6 +1,3 @@
-# Enclave configuration
-# Edit this file then run: enclave init
-
 name: e2ee-kv                    # App name (used in stack name, EIF name)
 version: 0.0.2                   # Build version (semver, baked into binary via ldflags)
 region: us-east-1                # AWS region
@@ -59,16 +56,7 @@ app:
     # cross-origin. Same baking story as RP_ORIGIN above. Production deploys
     # rebuild the EIF with their real consumer origin(s).
     CORS_ALLOWED_ORIGINS: "https://e2ee.vtxos.com"
-    # AWS endpoints via gvproxy TAP. host.containers.internal resolves to the
-    # host from inside the enclave; in production gvproxy routes these to real
-    # AWS endpoints, in the regtest harness they hit local-kms-proxy / LocalStack.
-    # Baking them at build time means PCR0 attests this routing.
-    AWS_ENDPOINT_URL_KMS: "http://host.containers.internal:4000"
-    AWS_ENDPOINT_URL_SSM: "http://host.containers.internal:4566"
-    AWS_ENDPOINT_URL_STS: "http://host.containers.internal:4566"
-    AWS_ENDPOINT_URL_S3: "http://host.containers.internal:4566"
-    AWS_ACCESS_KEY_ID: "test"
-    AWS_SECRET_ACCESS_KEY: "test"
+
 
 # Secrets managed by KMS inside the enclave.
 # Each secret is generated as 32 random bytes, encrypted with KMS,
@@ -79,3 +67,11 @@ secrets:
   # decrypted from KMS at every subsequent boot, exposed as $AUTH_TOKEN_KEY.
   - name: auth_token_key
     env_var: AUTH_TOKEN_KEY
+
+# TLS for the enclave's public HTTPS listener. letsencrypt obtains a CA-trusted
+# cert for fqdn via ACME (TLS-ALPN-01) — fqdn's DNS A record must point at the
+# enclave host's public IP. Applied at deploy time (CLI -> tofu -> SSM).
+tls:
+  provider: letsencrypt
+  fqdn: enclave.vtxos.com
+  email: "joshuaaruokhaitech@gmail.com"                # optional — ACME contact for cert-expiry notices

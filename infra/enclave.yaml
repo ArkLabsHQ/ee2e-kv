@@ -1,6 +1,3 @@
-# Enclave configuration
-# Edit this file then run: enclave init
-
 name: e2ee-kv                    # App name (used in stack name, EIF name)
 version: 0.0.2                   # Build version (semver, baked into binary via ldflags)
 region: us-east-1                # AWS region
@@ -38,6 +35,11 @@ app:
   release_tag: "eif-latest"      # GitHub Release tag used by 'enclave tofu --remote'
 
   # Environment variables baked into the EIF as build-time defaults
+  # (each value contributes to PCR0). Tofu can override any key here
+  # at deploy time via -var 'env_values={"MY_KEY":"new-value"}' without
+  # rebuilding the EIF — the runtime overlays the SSM value on top of
+  # the baked default at boot.
+  # Template vars: {{region}}, {{prefix}}, {{version}}
   env:
     # WebAuthn relying-party identity. RP_ID and RP_ORIGIN must match the
     # public hostname/scheme the user's browser sees. Override per-deployment
@@ -65,3 +67,11 @@ secrets:
   # decrypted from KMS at every subsequent boot, exposed as $AUTH_TOKEN_KEY.
   - name: auth_token_key
     env_var: AUTH_TOKEN_KEY
+
+# TLS for the enclave's public HTTPS listener. letsencrypt obtains a CA-trusted
+# cert for fqdn via ACME (TLS-ALPN-01) — fqdn's DNS A record must point at the
+# enclave host's public IP. Applied at deploy time (CLI -> tofu -> SSM).
+tls:
+  provider: letsencrypt
+  fqdn: enclave.vtxos.com
+  email: "joshuaaruokhaitech@gmail.com"                # optional — ACME contact for cert-expiry notices
