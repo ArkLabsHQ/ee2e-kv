@@ -12,7 +12,31 @@
       "Bash(ip -br link show enp4s0)",
       "Bash(ip -br link show wlp5s0)",
       "Bash(ip route *)",
-      "Bash(export AWS_PROFILE=e2ee-deployer)"
+      "Bash(export AWS_PROFILE=e2ee-deployer)",
+      "Bash(curl -sS -v --max-time 15 https://enclave.vtxos.com/v1/enclave-info)",
+      "Bash(openssl x509 *)",
+      "Bash(curl -sS -o /dev/null -w 'result: HTTP %{http_code}\\\\n' --max-time 15 https://enclave.vtxos.com/v1/enclave-info)",
+      "Bash(curl -sS -i -H 'Origin: https://e2ee.vtxos.com' --max-time 15 https://enclave.vtxos.com/v1/enclave-info)",
+      "Bash(curl -sS -i -H 'Origin: https://e2ee.vtxos.com' --max-time 15 'https://enclave.vtxos.com/enclave/attestation?nonce=00112233445566778899aabbccddeeff00112233')",
+      "Bash(curl -sS --max-time 15 https://enclave.vtxos.com/v1/enclave-info)",
+      "Bash(npm -w e2ee-kv-client run typecheck)",
+      "Bash(npm -w e2ee-kv-client run build)",
+      "Bash(AWS_PROFILE=e2ee-deployer enclave log --instance-id i-044b674511ac75fb2 --region us-east-1 --json --limit 400)",
+      "Bash(AWS_PROFILE=e2ee-deployer enclave status --instance-id i-044b674511ac75fb2 --region us-east-1)",
+      "Bash(enclave trace *)",
+      "Bash(enclave metrics *)",
+      "Bash(AWS_PROFILE=e2ee-deployer enclave trace --service app --instance-id i-044b674511ac75fb2 --region us-east-1 --json --limit 100)",
+      "Bash(AWS_PROFILE=e2ee-deployer enclave metrics --source app --instance-id i-044b674511ac75fb2 --region us-east-1 --json)",
+      "Bash(BUILD_CONFIG_PATH=/home/joshua/enclave-e2ee-kv/.enclave/build-config.json timeout 120 nix build .#upstream-app --impure --no-link --print-out-paths)",
+      "Bash(grep -aE '\\\\.go$')",
+      "Bash(xxd image.eif)",
+      "Bash(xxd)",
+      "Bash(python3 -)",
+      "Bash(cpio -itv)",
+      "Bash(grep -aoE '\\\\.\\(get|post|put|delete|all\\)\\\\\\(\"[^\"]+\"' __TRACKED_VAR__/src/dist/index.js)",
+      "Bash(enclave stop *)",
+      "Bash(enclave start *)",
+      "Bash(enclave migration-status *)"
     ]
   }
 }

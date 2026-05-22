@@ -47,7 +47,7 @@ if (telemetryEnabled) {
   // standard /v1/{traces,metrics,logs} signal paths to this base.
   const endpoint = (
     env.OTEL_EXPORTER_OTLP_ENDPOINT ??
-    env.RUNTIME_BASE_URL ??
+    env.ENCLAVE_PROXY_PORT ??
     "http://127.0.0.1:7073"
   ).replace(/\/+$/, "");
   const headers = { Authorization: `Bearer ${runtimeToken}` };

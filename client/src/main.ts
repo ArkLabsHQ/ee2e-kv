@@ -19,6 +19,20 @@ async function bootstrap(): Promise<void> {
     return;
   }
 
+  // TEMPORARY: attestation bypassed. The supervisor's /v1 + /enclave routes
+  // aren't CORS-reachable from the cross-origin SPA, so fetchAndVerify() can't
+  // run. With this flag the client does NOT verify it's the genuine enclave —
+  // remove VITE_SKIP_ATTESTATION (and add a same-origin proxy) before real use.
+  if (import.meta.env.VITE_SKIP_ATTESTATION === "true") {
+    banner.className = "banner err";
+    banner.innerHTML = `
+      <strong>Attestation SKIPPED — enclave NOT verified.</strong>
+      Temporary bypass — do not enter real secrets.
+    `;
+    renderAuth(new KvClient({ attestationPubkeyHex: null, baseUrl: ENCLAVE_URL }));
+    return;
+  }
+
   let pubkeyHex: string;
   let pcr0Hex: string;
   try {
