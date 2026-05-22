@@ -25,8 +25,8 @@ app:
   # Secrets are passed as environment variables. No runtime imports needed.
   nix_owner: "ArkLabsHQ"                  # GitHub owner (required)
   nix_repo: "ee2e-kv"                   # GitHub repo name (required)
-  nix_rev: "baf6700f41a9cff71c4f12dee3d6ead5b0ddcf1b"                    # Git commit SHA (required)
-  nix_hash: "sha256-hI8xvJgfcLS6Jk+zI8KaWCHfEGLFni0U6Z8qQ1G05ys="                   # Nix source hash: nix-prefetch-url --unpack (required)
+  nix_rev: "3ff02df7ba00bdb2ce53d11b21848ecec2be1632"                    # Git commit SHA (required)
+  nix_hash: "sha256-aNpAnwTF85pdSLK8UQuxDG86nLQ25SFUGfyPsY5RcNo="                   # Nix source hash: nix-prefetch-url --unpack (required)
   nix_vendor_hash: "sha256-cplKazujfHO3P5UAnjTChVOC6wnuMmDkKq77FP52gDg="            # Go vendor hash (required)
   nix_sub_packages:              # Unused for nodejs apps (Go-only); leave as-is
     - "."
